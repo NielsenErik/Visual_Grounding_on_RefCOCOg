@@ -21,7 +21,8 @@ class RefCOCO(Dataset):
     def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
         x = pd.read_pickle(annotations_file)
         self.img_labels = pd.DataFrame(x)
-        #self.img_labels.to_csv('Test/Data/labels.csv',index=False)
+        #This is to save the labels in a csv file, it is not necessary, it is helpful to check the labels
+        #self.img_labels.to_csv('Test/Data/labels.csv',index=False) 
         self.target_transform = target_transform
         self.img_dir = img_dir
         self.transform = transform

@@ -46,16 +46,17 @@ def get_img_transform():
 
 
 def get_data(batch_size, annotations_file, img_root):
-    transform = get_img_transform()
-    #refCOCO_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, transform=transform)
-    
+    transform = get_img_transform()    
     
     # In refCOCO there is already the plits inside the labels,
-    #so we do't have to do the random split
+    # so we do't have to do the random split
+
+    # refCOCO_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, transform=transform)
     # training_samples = int(num_samples * 0.8+1)
     # test_samples = num_samples - training_samples
     # training_data, test_data = torch.utils.data.random_split(
     #     refCOCO_data, [training_samples, test_samples])
+
     training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, split_type='train', transform=transform)
     test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, split_type='test', transform=transform)
 
