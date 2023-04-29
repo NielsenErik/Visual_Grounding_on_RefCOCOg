@@ -23,6 +23,7 @@ class RefCOCO(Dataset):
         return len(self.img_labels)
 
     def __getitem__(self, idx):
+
         file_names = self.img_labels['file_name']#id string must be converted in 12 int digits 0000..xyzasd.jpg
         remove_id = self.img_labels['ann_id']
         file_name = file_names.iloc[idx].replace('_'+str(remove_id.iloc[idx])+'.jpg', '.jpg')
@@ -35,6 +36,29 @@ class RefCOCO(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         return image, label
+    
+class RefCOCO_Training(RefCOCO):
+    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
+        super().__init__(annotations_file, img_dir, transform, target_transform)
+        self.img_labels = self.img_labels.loc[self.img_labels['split'] == 'train']
+    
+    def __len__(self):
+        return len(self.img_labels)
+    
+    def __getitem__(self, idx):
+        return super().__getitem__(idx)
+    
+class RefCOCO_Test(RefCOCO):
+    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
+        super().__init__(annotations_file, img_dir, transform, target_transform)
+        self.img_labels = self.img_labels.loc[self.img_labels['split'] == 'test']
+    
+    def __len__(self):
+        return len(self.img_labels)
+    
+    def __getitem__(self, idx):
+        return super().__getitem__(idx)
+    
 
 #refer = REFER(data_root, dataset='refcocog', splitBy='umd') # dataset='refcoco', splitBy='unc'    
     
