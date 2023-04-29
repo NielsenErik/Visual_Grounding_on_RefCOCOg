@@ -37,21 +37,10 @@ class RefCOCO(Dataset):
             label = self.target_transform(label)
         return image, label
     
-class RefCOCO_Training(RefCOCO):
-    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
+class RefCOCO_Split(RefCOCO):
+    def __init__(self, annotations_file, img_dir, split_type = 'train', transform=None, target_transform=None):
         super().__init__(annotations_file, img_dir, transform, target_transform)
-        self.img_labels = self.img_labels.loc[self.img_labels['split'] == 'train']
-    
-    def __len__(self):
-        return len(self.img_labels)
-    
-    def __getitem__(self, idx):
-        return super().__getitem__(idx)
-    
-class RefCOCO_Test(RefCOCO):
-    def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
-        super().__init__(annotations_file, img_dir, transform, target_transform)
-        self.img_labels = self.img_labels.loc[self.img_labels['split'] == 'test']
+        self.img_labels = self.img_labels.loc[self.img_labels['split'] == split_type]
     
     def __len__(self):
         return len(self.img_labels)

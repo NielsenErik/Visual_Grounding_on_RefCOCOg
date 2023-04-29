@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import torchvision.transforms as T
 import os
 from torchvision.io import read_image
-from cocoLoad import RefCOCO, RefCOCO_Training, RefCOCO_Test #Importing REfCOCO class from cocoLoad.py
+from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLoad.py
 from clip import clip
 
 
@@ -56,8 +56,8 @@ def get_data(batch_size, annotations_file, img_root):
     # test_samples = num_samples - training_samples
     # training_data, test_data = torch.utils.data.random_split(
     #     refCOCO_data, [training_samples, test_samples])
-    training_data = RefCOCO_Training(annotations_file = annotations_file, img_dir=img_root, transform=transform)
-    test_data = RefCOCO_Test(annotations_file = annotations_file, img_dir=img_root, transform=transform)
+    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, split_type='train', transform=transform)
+    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, split_type='test', transform=transform)
 
     num_training_samples = len(training_data)
     print("Number of training samples:", num_training_samples)
