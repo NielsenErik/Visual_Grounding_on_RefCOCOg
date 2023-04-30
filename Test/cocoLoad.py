@@ -59,7 +59,7 @@ class RefCOCO(Dataset):
         # images_fp: the list of the images file names
         # texts: the list of the descriptions attached to the images
         debugging("In encode_data")
-        images = [self.preprocess(Image.open(image)) for image in images_fp]
+        images = [self.preprocess(Image.open(image)) for image in images_fp] #TODO: THIS IS THE BOTTLENECK
         debugging("In encode_data: images preprocessed")
         images = torch.tensor(np.stack(images)).cuda()
         text_tokens = clip.tokenize(texts).cuda()

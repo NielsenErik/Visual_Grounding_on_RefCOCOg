@@ -80,10 +80,20 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess):
     num_test_samples = len(test_data)
     print("Number of test samples:", num_test_samples)
 
-    train_loader = torch.utils.data.DataLoader(
-        training_data, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(
-        test_data, batch_size=batch_size, shuffle=False)
+    # THis is only for test
+    # it just get a smaller size of the training dataset
+    small_batch = int(10)
+    big_batch = num_training_samples - small_batch
+    
+    test_small_batch = int(10)
+    test_big_batch = num_test_samples - test_small_batch
+    
+    train_small_batch, _ = torch.utils.data.random_split(training_data,  [small_batch, big_batch])
+    test_small_batch, _ = torch.utils.data.random_split(test_data,  [test_small_batch, test_big_batch])
+    train_loader = torch.utils.data.DataLoader(train_small_batch, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_small_batch, batch_size=batch_size, shuffle=False)
+    #train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True)
+    #test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader
 
 
