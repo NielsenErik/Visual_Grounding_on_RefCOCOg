@@ -2,10 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
-import torchvision
-from torchvision import transforms, utils
-import torch.nn.functional as F
+from PIL import Image
 import torchvision.transforms as T
 import os
 from torchvision.io import read_image
@@ -13,8 +10,7 @@ from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLo
 from clip import clip
 
 
-# import yolo baseline architecture
-model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=False, _verbose=False)
+#
 
 # get the cost function
 def get_cost_function():
@@ -40,12 +36,31 @@ def get_img_transform():
     transform.append(T.CenterCrop((224,224)))   
     # convert Numpy to Pytorch Tensor    
     transform.append(T.ToTensor())  
-    transform.append(T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))  
+    
     transform = T.Compose(transform)
     return transform
 
+def encode_data(images_fp: list[str], texts: list[str], preprocess, model):
+    images = [preprocess(Image.open(image)) for image in images_fp]
+    images = torch.tensor(np.stack(images)).cuda()
+    text_tokens = clip.tokenize(["This is " + desc for desc in texts]).cuda()
+    with torch.no_grad():
+        images_z = model.encode_image(images).float()
+        texts_z = model.encode_text(text_tokens).float()  
+    return images_z, texts_z
 
-def get_data(batch_size, annotations_file, img_root):
+def get_data(batch_size, annotations_file, img_root, model, preprocess):
+    #This function returns the training and test data loaders
+    #The data loaders will be used by the training and test functions respectively
+    #The data loaders will be used to load the data in batches of size batch_size
+    #The data loaders will also apply the transformations to the data as specified in the transform function
+    #batch_size: the batch size to be used
+    #annotations_file: the path to the file containing the annotations
+    #img_root: the path to the folder containing the images
+    #transform: the transform function to be applied on the data
+    #model: the model to be used for encoding the images and texts
+    #preprocess: the preprocess function to be applied on the images
+    
     transform = get_img_transform()    
     
     # In refCOCO there is already the plits inside the labels,
@@ -57,8 +72,8 @@ def get_data(batch_size, annotations_file, img_root):
     # training_data, test_data = torch.utils.data.random_split(
     #     refCOCO_data, [training_samples, test_samples])
 
-    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, split_type='train', transform=transform)
-    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, split_type='test', transform=transform)
+    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform)
+    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform)
 
     num_training_samples = len(training_data)
     print("Number of training samples:", num_training_samples)
@@ -132,11 +147,17 @@ epochs = 50,
 num_classes = 65,
 annotations_file = 'refcocog/annotations/refs(umd).p'
 root_imgs = 'refcocog/images'
-train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs)
+device = get_device()
+
+# import yolo baseline architecture
+yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=False, _verbose=False)
+clip_model, clip_preprocess = clip.load('RN50', device=device)
+
+train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_preprocess)
 
 print("Before training")
-train_loss, train_accuracy = test_step(model, train_loader, get_cost_function())
-test_loss, test_accuracy = test_step(model, test_loader, get_cost_function())
+train_loss, train_accuracy = test_step(yolo_model, train_loader, get_cost_function(), device=device)
+test_loss, test_accuracy = test_step(yolo_model, test_loader, get_cost_function(), device=device)
 print('\tTraining loss {:.5f}, Training accuracy {:.2f}'.format(
     train_loss, train_accuracy))
 print('\tTest loss {:.5f}, Test accuracy {:.2f}'.format(
