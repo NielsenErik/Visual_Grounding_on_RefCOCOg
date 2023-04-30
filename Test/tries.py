@@ -8,7 +8,7 @@ import os
 from torchvision.io import read_image
 from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLoad.py
 from clip import clip
-
+from printCalls import debugging
 
 #
 
@@ -91,10 +91,9 @@ def training_step(net, data_loader, optimizer, cost_function, device=get_device(
     samples = 0.0
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
-
     net.train()
     for batch_idx, (inputs, targets) in enumerate(data_loader):
-        print("OK")
+        
         optimizer.zero_grad()
         inputs = inputs.to(device)
         targets = targets.to(device)
@@ -113,10 +112,11 @@ def test_step(net, data_loader, cost_function, device=get_device()):
     samples = 0.0
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
-
+    debugging("Into test function")
     net.eval()
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
+            debugging("Into test loop")
             print(inputs.size(), targets.size())
             inputs = inputs.to(device)
             targets = targets.to(device)

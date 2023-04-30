@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 import os
 from torchvision.io import read_image
 from clip import clip
+from printCalls import debugging, warning
 
 from PIL import Image
 
@@ -35,10 +36,15 @@ class RefCOCO(Dataset):
         return len(self.img_texts)
     
     def get_data(self):
-        file_names = self.img_texts['file_name']#id string must be converted in 12 int digits 0000..xyzasd.jpg
+        # This function get the data inmages file names and the descriptions attached to them
+        debugging("In get_data")
+        file_names_ = self.img_texts['file_name']#id string must be converted in 12 int digits 0000..xyzasd.jpg
         remove_id = self.img_texts['ann_id']
-        file_names = file_names.iloc[:].replace('_'+str(remove_id.iloc[:])+'.jpg', '.jpg')
+        
+        file_names = [file_names_.iloc[i].replace('_'+str(remove_id.iloc[i])+'.jpg', '.jpg') for i in range(len(file_names_))]
         image_names = [os.path.join(self.img_dir, name) for name in file_names]
+        
+        debugging("In get_data: image names")
         desc = []
         texts = []
         for j in range(len(self.img_texts)):
@@ -48,9 +54,16 @@ class RefCOCO(Dataset):
         return image_names, texts
         
     def encode_data(self, images_fp: list[str], texts: list[str]):
+        # This function encode the images data and the text data
+        # the required parameters are:
+        # images_fp: the list of the images file names
+        # texts: the list of the descriptions attached to the images
+        debugging("In encode_data")
         images = [self.preprocess(Image.open(image)) for image in images_fp]
+        debugging("In encode_data: images preprocessed")
         images = torch.tensor(np.stack(images)).cuda()
         text_tokens = clip.tokenize(texts).cuda()
+        debugging("In encode_data: text tokens")
         with torch.no_grad():
             images_z = self.model.encode_image(images).float()
             texts_z = self.model.encode_text(text_tokens).float()  
@@ -58,6 +71,10 @@ class RefCOCO(Dataset):
         
    
     def __getitem__(self, idx):
+        
+        # This function is used to get the item at the index idx
+        # the required parameter is:
+        # idx: the index of the item to be returned
 
         # file_names = self.img_texts['file_name']#id string must be converted in 12 int digits 0000..xyzasd.jpg
         # remove_id = self.img_texts['ann_id']
@@ -77,7 +94,9 @@ class RefCOCO(Dataset):
         #     desc = self.target_transform(desc)
         image_names, desc = self.get_data()
         images, texts_ = self.encode_data(image_names, desc)
-        image = images[idx]
+        image_ = images[idx]
+        if self.transform:
+            image = self.transform(image_)
         texts = texts_[idx]
         return image, texts
     
