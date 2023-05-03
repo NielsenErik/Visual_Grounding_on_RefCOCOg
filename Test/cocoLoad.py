@@ -31,12 +31,13 @@ class RefCOCO(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
-        self.encoded_img, self.encoded_texts = self.encode_data()
+        self.encoded_img = self.encode_img()
+        self.description = self.get_texts()
 
     def __len__(self):
         return self.sample_size
     
-    def get_data(self):
+    def get_img(self):
         # This function get the data inmages file names and the descriptions attached to them
         img_dir = Path(self.img_dir)
         image_names_tmp = [
@@ -44,32 +45,45 @@ class RefCOCO(Dataset):
             if filename.suffix in {'.png', '.jpg'}
         ] 
         image_names =[image_names_tmp[i] for i in range(self.sample_size)]   
-        #desc = []
+        # desc = []
+        # texts = []
+        # for j in range(self.sample_size):
+        #     for i in range(len(self.img_texts.iloc[j, 2])):
+        #         desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
+        #     texts.append(desc)
+        return image_names
+        
+    def get_texts(self):
+        desc = []
         texts = []
         for j in range(self.sample_size):
             for i in range(len(self.img_texts.iloc[j, 2])):
-                texts.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
-  
-        return image_names, texts
-        
-    def encode_data(self):
+                desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
+            texts.append(desc)
+        return texts
+         
+    def encode_img(self):
         # This function encode the images data and the text data
         # the required parameters are:
         # images_fp: the list of the images file names
         # texts: the list of the descriptions attached to the images
         debugging("In encode_data")
-        image_names, desc = self.get_data()
+        image_names = self.get_img()
         open_img = [Image.open(image) for image in image_names]
         images = [self.preprocess(image) for image in open_img] 
         images = torch.tensor(np.stack(images)).to(self.device)
-        debugging("In encode_data: tokenize descriptions")
-        text_tokens = clip.tokenize(desc).to(self.device)#TODO: fix target_transform, target size
-        text_tokens = torch.tensor(text_tokens).to(self.device)
-        debugging("In encode_data: text tokens")
         #with torch.no_grad():
             #images_z = self.model.encode_image(images).float()
             #texts_z = self.model.encode_text(text_tokens).float() 
-        return images, text_tokens        
+        return images 
+    
+    def encode_texts(self, desc_fp):#TODO: FIX size of target tensor
+        debugging("In encode_data: tokenize descriptions")
+        text_tokens = clip.tokenize(desc_fp).to(self.device)
+        text_tokens = torch.tensor(text_tokens).to(self.device)
+        with torch.no_grad():
+            texts_z = self.model.encode_text(text_tokens).float()
+        return texts_z       
         
    
     def __getitem__(self, idx):
@@ -99,7 +113,8 @@ class RefCOCO(Dataset):
         print(image.shape)
         # if self.transform:
         #      image = self.transform(image_)
-        texts = self.encoded_texts[idx]
+        img_desc = self.description[idx]
+        texts = self.encode_texts(img_desc)
         print(texts.shape)
         debugging("In getitem: return")
         return image, texts
@@ -114,6 +129,8 @@ class RefCOCO_Split(RefCOCO):
     # split_type: the type of split to be used, it can be 'train' or 'test'
     # transform: the transformation to be applied to the images
     # target_transform: the transformation to be applied to the labels
+    # device: the device to be used, it can be 'cuda' or 'cpu'
+    # sample_size: the size of the dataset to be loaded
 
     def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'test', transform=None, target_transform=None, device='cuda', sample_size=5023):
         super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size)
