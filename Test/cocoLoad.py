@@ -6,6 +6,8 @@ from torch.utils.data import Dataset
 import os
 from torchvision.io import read_image
 from clip import clip
+from pathlib import Path
+import skimage
 from printCalls import debugging, warning
 
 from PIL import Image
@@ -20,17 +22,20 @@ class RefCOCO(Dataset):
     # preprocess: the preprocessing function to be applied to the images
     # transform: the transformation to be applied to the images
     # target_transform: the transformation to be applied to the labels
-
-    def __init__(self, annotations_file, img_dir, model, preprocess, transform=None, target_transform=None):
+    # device: the device to be used (cuda or cpu)
+    
+    def __init__(self, annotations_file, img_dir, model, preprocess, transform=None, target_transform=None, device = 'cuda'):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         #This is to save the labels in a csv file, it is not necessary, it is helpful to check the labels
         #self.img_labels.to_csv('Test/Data/labels.csv',index=False) 
         self.target_transform = target_transform
+        self.device = device
         self.img_dir = img_dir
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
+        self.encoded_img, self.encoded_texts = self.encode_data()
 
     def __len__(self):
         return len(self.img_texts)
@@ -38,31 +43,39 @@ class RefCOCO(Dataset):
     def get_data(self):
         # This function get the data inmages file names and the descriptions attached to them
         debugging("In get_data")
-        file_names_ = self.img_texts['file_name']#id string must be converted in 12 int digits 0000..xyzasd.jpg
-        remove_id = self.img_texts['ann_id']
-        
-        file_names = [file_names_.iloc[i].replace('_'+str(remove_id.iloc[i])+'.jpg', '.jpg') for i in range(len(file_names_))]
-        image_names = [os.path.join(self.img_dir, name) for name in file_names]
-        
-        debugging("In get_data: image names")
-        desc = []
+        img_dir = Path(self.img_dir)
+        image_names = [
+            filename for filename in img_dir.glob('*')
+            if filename.suffix in {'.png', '.jpg'}
+        ]    
+        debugging("In get_data: image names collected")
+        #desc = []
         texts = []
         for j in range(len(self.img_texts)):
             for i in range(len(self.img_texts.iloc[j, 2])):
-                desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #this are the lables shown as tuples, this must be fixed
-            texts.append(desc)
+                texts.append(self.img_texts.iloc[j, 2][i]["raw"]) #this are the lables shown as tuples, this must be fixed
+        
+        debugging("In get_data: descriptions collected")    
         return image_names, texts
         
-    def encode_data(self, images_fp: list[str], texts: list[str]):
+    def encode_data(self):
         # This function encode the images data and the text data
         # the required parameters are:
         # images_fp: the list of the images file names
         # texts: the list of the descriptions attached to the images
         debugging("In encode_data")
-        images = [self.preprocess(Image.open(image)) for image in images_fp] #TODO: THIS IS THE BOTTLENECK
+        image_names, desc = self.get_data()
+        debugging("In encode_data: data collected")
+        debugging("In encode_data: opening images")
+        open_img = [Image.open(image_names[image]) for image in range(40)]
+        debugging("In encode_data: images opened")
+        debugging("In encode_data: preprocessing images")
+        images = [self.preprocess(image) for image in open_img]
         debugging("In encode_data: images preprocessed")
-        images = torch.tensor(np.stack(images)).cuda()
-        text_tokens = clip.tokenize(texts).cuda()
+        debugging("In encode_data: tranforming images to tensor") 
+        images = torch.tensor(np.stack(images)).to(self.device)
+        debugging("In encode_data: tokenize descriptions")
+        text_tokens = clip.tokenize(desc).to(self.device)#TODO: Bottleneck
         debugging("In encode_data: text tokens")
         with torch.no_grad():
             images_z = self.model.encode_image(images).float()
@@ -92,12 +105,10 @@ class RefCOCO(Dataset):
         #     image = self.transform(image_name)
         # if self.target_transform:
         #     desc = self.target_transform(desc)
-        image_names, desc = self.get_data()
-        images, texts_ = self.encode_data(image_names, desc)
-        image_ = images[idx]
+        image_ = self.encoded_img[idx]
         if self.transform:
             image = self.transform(image_)
-        texts = texts_[idx]
+        texts = self.encoded_texts[idx]
         return image, texts
     
 class RefCOCO_Split(RefCOCO):
@@ -111,10 +122,9 @@ class RefCOCO_Split(RefCOCO):
     # transform: the transformation to be applied to the images
     # target_transform: the transformation to be applied to the labels
 
-    def __init__(self, annotations_file, img_dir, model, preprocess,  split_type = 'train', transform=None, target_transform=None):
-        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform)
+    def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'test', transform=None, target_transform=None, device='cuda'):
+        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
-    
     def __len__(self):
         return len(self.img_texts)
     
