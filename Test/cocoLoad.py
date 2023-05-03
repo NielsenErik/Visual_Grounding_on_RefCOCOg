@@ -34,7 +34,7 @@ class RefCOCO(Dataset):
         self.encoded_img, self.encoded_texts = self.encode_data()
 
     def __len__(self):
-        return len(self.img_texts)
+        return self.sample_size
     
     def get_data(self):
         # This function get the data inmages file names and the descriptions attached to them
@@ -66,9 +66,9 @@ class RefCOCO(Dataset):
         text_tokens = clip.tokenize(desc).to(self.device)
         debugging("In encode_data: text tokens")
         with torch.no_grad():
-            images_z = self.model.encode_image(images).float()
+            #images_z = self.model.encode_image(images).float()
             texts_z = self.model.encode_text(text_tokens).float() 
-        return images_z, texts_z        
+        return images, texts_z        
         
    
     def __getitem__(self, idx):
@@ -93,9 +93,9 @@ class RefCOCO(Dataset):
         #     image = self.transform(image_name)
         # if self.target_transform:
         #     desc = self.target_transform(desc)
-        image_ = self.encoded_img[idx]
-        if self.transform:
-            image = self.transform(image_)
+        image = self.encoded_img[idx]
+        # if self.transform:
+        #      image = self.transform(image_)
         texts = self.encoded_texts[idx]
         return image, texts
     
@@ -114,7 +114,8 @@ class RefCOCO_Split(RefCOCO):
         super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
     def __len__(self):
-        return len(self.img_texts)
+        debugging("In __len__")
+        return super().__len__()
     
     def __getitem__(self, idx):
         return super().__getitem__(idx)

@@ -47,6 +47,9 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess, device =
     #transform: the transform function to be applied on the data
     #model: the model to be used for encoding the images and texts
     #preprocess: the preprocess function to be applied on the images
+    #device: the device to be used for training
+    #sample_size: the number of samples to be used for training and testing
+    
     
     transform = get_img_transform()    
     
@@ -103,20 +106,19 @@ def test_step(net, data_loader, cost_function, device=get_device()):
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
     debugging("Into test function")
-    print(enumerate(data_loader))
     net.eval()
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
             debugging("Into test loop")
-            step(inputs.size(), targets.size())
+            print(inputs.size(), targets.size())
             inputs = inputs.to(device)
             targets = targets.to(device)
             outputs = net(inputs)
-            step(outputs[0].size())
-            step(outputs[1][0].size())
-            step(outputs[1][1].size())
-            step(outputs[1][2].size())
-            loss = cost_function(outputs[0], targets)
+            step(str(outputs[0].size()))
+            step(str(outputs[1][0].size()))
+            step(str(outputs[1][1].size()))
+            step(str(outputs[1][2].size()))
+            loss = cost_function(outputs[0], targets)#NEW Bottleneck
             loss.backward()
             samples += inputs.shape[0]
             cumulative_loss += loss.item()
