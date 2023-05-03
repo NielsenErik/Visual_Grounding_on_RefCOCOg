@@ -1,14 +1,10 @@
-import pandas as pd
-import os
 import numpy as np
 import torch
 from PIL import Image
 import torchvision.transforms as T
-import os
-from torchvision.io import read_image
 from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLoad.py
 from clip import clip
-from printCalls import debugging
+from printCalls import debugging, step
 
 #
 
@@ -40,15 +36,6 @@ def get_img_transform():
     transform = T.Compose(transform)
     return transform
 
-def encode_data(images_fp: list[str], texts: list[str], preprocess, model):
-    images = [preprocess(Image.open(image)) for image in images_fp]
-    images = torch.tensor(np.stack(images)).cuda()
-    text_tokens = clip.tokenize(["This is " + desc for desc in texts]).cuda()
-    with torch.no_grad():
-        images_z = model.encode_image(images).float()
-        texts_z = model.encode_text(text_tokens).float()  
-    return images_z, texts_z
-
 def get_data(batch_size, annotations_file, img_root, model, preprocess, device = get_device(), sample_size = 5023):
     #This function returns the training and test data loaders
     #The data loaders will be used by the training and test functions respectively
@@ -74,11 +61,10 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess, device =
 
     training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size)
     test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size)
-
     num_training_samples = len(training_data)
-    print("Number of training samples:", num_training_samples)
+    step("Number of training samples:" + str(num_training_samples))
     num_test_samples = len(test_data)
-    print("Number of test samples:", num_test_samples)
+    step("Number of test samples:" + str(num_test_samples))
 
     # Number of training samples: 42226
     # Number of test samples: 5023
@@ -117,18 +103,19 @@ def test_step(net, data_loader, cost_function, device=get_device()):
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
     debugging("Into test function")
+    print(enumerate(data_loader))
     net.eval()
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
             debugging("Into test loop")
-            print(inputs.size(), targets.size())
+            step(inputs.size(), targets.size())
             inputs = inputs.to(device)
             targets = targets.to(device)
             outputs = net(inputs)
-            print(outputs[0].size())
-            print(outputs[1][0].size())
-            print(outputs[1][1].size())
-            print(outputs[1][2].size())
+            step(outputs[0].size())
+            step(outputs[1][0].size())
+            step(outputs[1][1].size())
+            step(outputs[1][2].size())
             loss = cost_function(outputs[0], targets)
             loss.backward()
             samples += inputs.shape[0]
@@ -159,11 +146,11 @@ clip_model, clip_preprocess = clip.load('RN50', device=device)
 clip_model = clip_model.cuda().eval()
 train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_preprocess, device=device, sample_size=100)
 
-print("Before training")
+step("Before training")
 train_loss, train_accuracy = test_step(yolo_model, train_loader, get_cost_function(), device=device)
 test_loss, test_accuracy = test_step(yolo_model, test_loader, get_cost_function(), device=device)
-print('\tTraining loss {:.5f}, Training accuracy {:.2f}'.format(
+step('\tTraining loss {:.5f}, Training accuracy {:.2f}'.format(
     train_loss, train_accuracy))
-print('\tTest loss {:.5f}, Test accuracy {:.2f}'.format(
+step('\tTest loss {:.5f}, Test accuracy {:.2f}'.format(
     test_loss, test_accuracy))
-print('-----------------------------------------------------')
+step('-----------------------------------------------------')

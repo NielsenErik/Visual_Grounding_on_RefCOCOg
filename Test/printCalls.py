@@ -21,9 +21,7 @@ def now():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
 def debugging(buffer):
-    print(now()+" ["+colors.BOLD+colors.OKGREEN+"DEBUG"+colors.ENDC+"] " + buffer +"\n")
+    print(now()+" ["+colors.BOLD+colors.DEBUGGING+"DEBUG"+colors.ENDC+"] " + buffer +"\n")
     
-def warning(text):
-    print(colors.WARNING)
-    print(text) 
-    print(colors.ENDC)   
+def step(buffer):
+    print(now()+" ["+colors.BOLD+colors.OKGREEN+"STEP"+colors.ENDC+"] " + buffer +"\n")

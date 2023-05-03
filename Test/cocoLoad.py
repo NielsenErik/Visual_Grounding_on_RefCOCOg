@@ -1,16 +1,11 @@
 import pandas as pd
-import os
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-import os
-from torchvision.io import read_image
-from clip import clip
 from pathlib import Path
-import skimage
-from printCalls import debugging, warning
-
+from printCalls import debugging, step
 from PIL import Image
+import clip
 
 class RefCOCO(Dataset):
     # This class is used to load the RefCOCO dataset, it is a subclass of Dataset.
@@ -43,21 +38,18 @@ class RefCOCO(Dataset):
     
     def get_data(self):
         # This function get the data inmages file names and the descriptions attached to them
-        debugging("In get_data")
         img_dir = Path(self.img_dir)
         image_names_tmp = [
             filename for filename in img_dir.glob('*')
             if filename.suffix in {'.png', '.jpg'}
         ] 
         image_names =[image_names_tmp[i] for i in range(self.sample_size)]   
-        debugging("In get_data: image names collected")
         #desc = []
         texts = []
         for j in range(self.sample_size):
             for i in range(len(self.img_texts.iloc[j, 2])):
                 texts.append(self.img_texts.iloc[j, 2][i]["raw"]) #this are the lables shown as tuples, this must be fixed
-        
-        debugging("In get_data: descriptions collected")    
+  
         return image_names, texts
         
     def encode_data(self):
@@ -67,22 +59,15 @@ class RefCOCO(Dataset):
         # texts: the list of the descriptions attached to the images
         debugging("In encode_data")
         image_names, desc = self.get_data()
-        debugging("In encode_data: data collected")
-        debugging("In encode_data: opening images")
         open_img = [Image.open(image) for image in image_names]
-        debugging("In encode_data: images opened")
-        debugging("In encode_data: preprocessing images")
-        images = [self.preprocess(image) for image in open_img]
-        debugging("In encode_data: images preprocessed")
-        debugging("In encode_data: tranforming images to tensor") 
+        images = [self.preprocess(image) for image in open_img] 
         images = torch.tensor(np.stack(images)).to(self.device)
         debugging("In encode_data: tokenize descriptions")
-        #text_tokens = clip.tokenize(desc).to(self.device)#TODO: Bottleneck
+        text_tokens = clip.tokenize(desc).to(self.device)
         debugging("In encode_data: text tokens")
         with torch.no_grad():
             images_z = self.model.encode_image(images).float()
-            #texts_z = self.model.encode_text(text_tokens).float() 
-            texts_z = desc 
+            texts_z = self.model.encode_text(text_tokens).float() 
         return images_z, texts_z        
         
    
