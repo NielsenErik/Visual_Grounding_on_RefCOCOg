@@ -49,7 +49,7 @@ def encode_data(images_fp: list[str], texts: list[str], preprocess, model):
         texts_z = model.encode_text(text_tokens).float()  
     return images_z, texts_z
 
-def get_data(batch_size, annotations_file, img_root, model, preprocess, device = get_device()):
+def get_data(batch_size, annotations_file, img_root, model, preprocess, device = get_device(), sample_size = 5023):
     #This function returns the training and test data loaders
     #The data loaders will be used by the training and test functions respectively
     #The data loaders will be used to load the data in batches of size batch_size
@@ -72,14 +72,17 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess, device =
     # training_data, test_data = torch.utils.data.random_split(
     #     refCOCO_data, [training_samples, test_samples])
 
-    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device)
-    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device)
+    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size)
+    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size)
 
     num_training_samples = len(training_data)
     print("Number of training samples:", num_training_samples)
     num_test_samples = len(test_data)
     print("Number of test samples:", num_test_samples)
 
+    # Number of training samples: 42226
+    # Number of test samples: 5023
+    
     # THis is only for test
     # it just get a smaller size of the training dataset
     
@@ -154,7 +157,7 @@ device = get_device()
 yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=False, _verbose=False)
 clip_model, clip_preprocess = clip.load('RN50', device=device)
 clip_model = clip_model.cuda().eval()
-train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_preprocess)
+train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_preprocess, device=device, sample_size=100)
 
 print("Before training")
 train_loss, train_accuracy = test_step(yolo_model, train_loader, get_cost_function(), device=device)
