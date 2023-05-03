@@ -114,10 +114,11 @@ def test_step(net, data_loader, cost_function, device=get_device()):
             inputs = inputs.to(device)
             targets = targets.to(device)
             outputs = net(inputs)
-            step(str(outputs[0].size()))
-            step(str(outputs[1][0].size()))
-            step(str(outputs[1][1].size()))
-            step(str(outputs[1][2].size()))
+            debugging("Outputs sizes")
+            print(outputs[0].size())
+            print(outputs[1][0].size())
+            print(outputs[1][1].size())
+            print(outputs[1][2].size())
             loss = cost_function(outputs[0], targets)#NEW Bottleneck
             loss.backward()
             samples += inputs.shape[0]

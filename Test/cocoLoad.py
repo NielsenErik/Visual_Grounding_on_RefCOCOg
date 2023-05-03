@@ -48,7 +48,7 @@ class RefCOCO(Dataset):
         texts = []
         for j in range(self.sample_size):
             for i in range(len(self.img_texts.iloc[j, 2])):
-                texts.append(self.img_texts.iloc[j, 2][i]["raw"]) #this are the lables shown as tuples, this must be fixed
+                texts.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
   
         return image_names, texts
         
@@ -63,12 +63,13 @@ class RefCOCO(Dataset):
         images = [self.preprocess(image) for image in open_img] 
         images = torch.tensor(np.stack(images)).to(self.device)
         debugging("In encode_data: tokenize descriptions")
-        text_tokens = clip.tokenize(desc).to(self.device)
+        text_tokens = clip.tokenize(desc).to(self.device)#TODO: fix target_transform, target size
+        text_tokens = torch.tensor(text_tokens).to(self.device)
         debugging("In encode_data: text tokens")
-        with torch.no_grad():
+        #with torch.no_grad():
             #images_z = self.model.encode_image(images).float()
-            texts_z = self.model.encode_text(text_tokens).float() 
-        return images, texts_z        
+            #texts_z = self.model.encode_text(text_tokens).float() 
+        return images, text_tokens        
         
    
     def __getitem__(self, idx):
@@ -93,10 +94,14 @@ class RefCOCO(Dataset):
         #     image = self.transform(image_name)
         # if self.target_transform:
         #     desc = self.target_transform(desc)
+        debugging("In getitem")
         image = self.encoded_img[idx]
+        print(image.shape)
         # if self.transform:
         #      image = self.transform(image_)
         texts = self.encoded_texts[idx]
+        print(texts.shape)
+        debugging("In getitem: return")
         return image, texts
     
 class RefCOCO_Split(RefCOCO):
@@ -114,7 +119,6 @@ class RefCOCO_Split(RefCOCO):
         super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
     def __len__(self):
-        debugging("In __len__")
         return super().__len__()
     
     def __getitem__(self, idx):
