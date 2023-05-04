@@ -80,10 +80,10 @@ class RefCOCO(Dataset):
     def encode_texts(self, desc_fp):#TODO: FIX size of target tensor
         debugging("In encode_data: tokenize descriptions")
         text_tokens = clip.tokenize(desc_fp).to(self.device)
-        text_tokens = torch.tensor(text_tokens).to(self.device)
-        with torch.no_grad():
-            texts_z = self.model.encode_text(text_tokens).float()
-        return texts_z       
+        #text_tokens = torch.tensor(text_tokens).to(self.device)
+        #with torch.no_grad():
+        #    texts_z = self.model.encode_text(text_tokens).float()
+        return text_tokens       
         
    
     def __getitem__(self, idx):
@@ -110,12 +110,10 @@ class RefCOCO(Dataset):
         #     desc = self.target_transform(desc)
         debugging("In getitem")
         image = self.encoded_img[idx]
-        print(image.shape)
         # if self.transform:
         #      image = self.transform(image_)
         img_desc = self.description[idx]
         texts = self.encode_texts(img_desc)
-        print(texts.shape)
         debugging("In getitem: return")
         return image, texts
     
