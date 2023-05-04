@@ -8,6 +8,7 @@ import clip
 #Here useful github page were there is an implementation
 # of the baseline idea YOLO + Clip
 # https://github.com/vijishmadhavan/Crop-CLIP/blob/master/Crop_CLIP.ipynb
+# https://stackoverflow.com/questions/73593712/calculating-similarities-of-text-embeddings-using-clip
 
 #import YOLO model
 
