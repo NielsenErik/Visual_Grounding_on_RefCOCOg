@@ -16,9 +16,19 @@ def get_cost_function():
 def get_optimizer(net, lr, wd, momentum):
     return torch.optim.SGD(net.parameters(), lr=lr, weight_decay=wd, momentum=momentum)
 
+def cosine_similarity(image_z: torch.Tensor, texts_z: torch.Tensor):
+    # normalise the image and the text
+    print("image shape ", images_z.shape)
+    print("text shape ", texts_z.shape)
+    images_z /= images_z.norm(dim=-1, keepdim=True)
+    texts_z /= texts_z.norm(dim=-1, keepdim=True)
+
+    # evaluate the cosine similarity between the sets of features
+    similarity = (texts_z @ images_z.T)
+
+    return similarity.cpu()
+
 # check if Cuda is available to be used by the device, otherwise uses cpu
-
-
 def get_device():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("The current device is", device)
@@ -90,7 +100,7 @@ def training_step(net, data_loader, optimizer, cost_function, device=get_device(
         optimizer.zero_grad()
         inputs = inputs.to(device)
         targets = targets.to(device)
-        outputs = net(inputs)
+        outputs = net(inputs, targets)
         loss = cost_function(outputs, targets)
         loss.backward()
         optimizer.step()
@@ -113,7 +123,7 @@ def test_step(net, data_loader, cost_function, device=get_device()):
             print(inputs.size(), targets.size())
             inputs = inputs.to(device)
             targets = targets.to(device)
-            outputs = net(inputs)
+            outputs = net(inputs, targets)
             debugging("Outputs sizes")
             print(outputs[0].size())
             print(outputs[1][0].size())
@@ -150,8 +160,8 @@ clip_model = clip_model.cuda().eval()
 train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_preprocess, device=device, sample_size=100)
 
 step("Before training")
-train_loss, train_accuracy = test_step(yolo_model, train_loader, get_cost_function(), device=device)
-test_loss, test_accuracy = test_step(yolo_model, test_loader, get_cost_function(), device=device)
+train_loss, train_accuracy = test_step(clip_model, train_loader, get_cost_function(), device=device)
+test_loss, test_accuracy = test_step(clip_model, test_loader, get_cost_function(), device=device)
 step('\tTraining loss {:.5f}, Training accuracy {:.2f}'.format(
     train_loss, train_accuracy))
 step('\tTest loss {:.5f}, Test accuracy {:.2f}'.format(
