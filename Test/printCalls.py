@@ -20,8 +20,14 @@ class colors:
 def now():
     return datetime.datetime.now().strftime("%H:%M:%S")
 
+def error(buffer):
+    print(now()+" ["+colors.BOLD+colors.FAIL+"ERROR"+colors.ENDC+"] " + buffer +"\n")
+    
+def warning(buffer):
+    print(now()+" ["+colors.BOLD+colors.ORANGE+"WARNING"+colors.ENDC+"] " + buffer +"\n")
+
 def debugging(buffer):
     print(now()+" ["+colors.BOLD+colors.DEBUGGING+"DEBUG"+colors.ENDC+"] " + buffer +"\n")
     
-def step(buffer):
-    print(now()+" ["+colors.BOLD+colors.OKGREEN+"STEP"+colors.ENDC+"] " + buffer +"\n")
+def info(buffer):
+    print(now()+" ["+colors.BOLD+colors.OKGREEN+"INFO"+colors.ENDC+"] " + buffer +"\n")
