@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from pathlib import Path
-from printCalls import debugging, step
+from printCalls import debugging, info
 from PIL import Image
 import clip
 
