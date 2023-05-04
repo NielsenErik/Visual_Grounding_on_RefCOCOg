@@ -69,13 +69,13 @@ class RefCOCO(Dataset):
         # texts: the list of the descriptions attached to the images
         debugging("In encode_data")
         image_names = self.get_img()
-        open_img = [Image.open(image) for image in image_names]
-        images = [self.preprocess(image) for image in open_img]
-        images = torch.tensor(np.stack(images)).to(self.device)
+        #open_img = [Image.open(image) for image in image_names]
+        #images = [self.preprocess(image) for image in open_img]
+        #images = torch.tensor(np.stack(images)).to(self.device)
         #with torch.no_grad():
             #images_z = self.model.encode_image(images).float()
             #texts_z = self.model.encode_text(text_tokens).float()
-        return images
+        return image_names
 
     def encode_texts(self, desc_fp):#TODO: FIX size of target tensor
         debugging("In encode_data: tokenize descriptions")
@@ -109,7 +109,7 @@ class RefCOCO(Dataset):
         # if self.target_transform:
         #     desc = self.target_transform(desc)
         debugging("In getitem")
-        image = self.encoded_img[idx]
+        image = [str(self.encoded_img[idx])]
         # if self.transform:
         #      image = self.transform(image_)
         img_desc = self.description[idx]

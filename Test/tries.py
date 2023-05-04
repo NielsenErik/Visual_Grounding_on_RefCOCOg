@@ -16,10 +16,8 @@ def get_cost_function():
 def get_optimizer(net, lr, wd, momentum):
     return torch.optim.SGD(net.parameters(), lr=lr, weight_decay=wd, momentum=momentum)
 
-def cosine_similarity(image_z: torch.Tensor, texts_z: torch.Tensor):
+def cosine_similarity(images_z: torch.Tensor, texts_z: torch.Tensor):
     # normalise the image and the text
-    print("image shape ", images_z.shape)
-    print("text shape ", texts_z.shape)
     images_z /= images_z.norm(dim=-1, keepdim=True)
     texts_z /= texts_z.norm(dim=-1, keepdim=True)
 
@@ -120,19 +118,21 @@ def test_step(net, data_loader, cost_function, device=get_device()):
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
             debugging("Into test loop")
-            print(inputs.size(), targets.size())
-            inputs = inputs.to(device)
-            targets = targets.to(device)
-            outputs = net(inputs)
+            #print(inputs.size(), targets.size())
+            print(inputs[0])
+            outputs = net(inputs[0])
+            print(type(outputs))
             res = outputs.pandas().xyxy[0]
             max_sim = 0
             max_sim_class = ""
             for ind in res.index:
                 t = res["name"][ind]
-                result = clip.tokenize(t).to(device)
-                sim = cosine_similarity(result.float(), targets.float())
-                if sim > max_sim:
-                    max_sim = sim
+                result = clip.tokenize(t)
+                sim = cosine_similarity(result.float().to(device), targets.float().to(device))
+                similarity = (100 * sim).softmax(dim=-1)
+                print(similarity)
+                if similarity > max_sim:
+                    max_sim = similarity
                     max_sim_class = t
             print("The predicted class is", max_sim_class)
     #         debugging("Outputs sizes")
@@ -154,7 +154,7 @@ def test_step(net, data_loader, cost_function, device=get_device()):
 # preliminar step
 
 
-batch_size = 128
+batch_size = 1
 device = 'cuda:0'
 learning_rate = 0.001
 weight_decay = 0.000001
@@ -165,14 +165,14 @@ root_imgs = 'refcocog/images'
 device = get_device()
 
 # import yolo baseline architecture
-yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=False, _verbose=False)
+yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
 clip_model, clip_preprocess = clip.load('RN50', device=device)
 clip_model = clip_model.cuda().eval()
 train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_preprocess, device=device, sample_size=100)
 
 step("Before training")
-train_loss, train_accuracy = test_step(clip_model, train_loader, get_cost_function(), device=device)
-test_loss, test_accuracy = test_step(clip_model, test_loader, get_cost_function(), device=device)
+train_loss, train_accuracy = test_step(yolo_model, train_loader, get_cost_function(), device=device)
+test_loss, test_accuracy = test_step(yolo_model, test_loader, get_cost_function(), device=device)
 step('\tTraining loss {:.5f}, Training accuracy {:.2f}'.format(
     train_loss, train_accuracy))
 step('\tTest loss {:.5f}, Test accuracy {:.2f}'.format(
