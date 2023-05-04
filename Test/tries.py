@@ -123,19 +123,30 @@ def test_step(net, data_loader, cost_function, device=get_device()):
             print(inputs.size(), targets.size())
             inputs = inputs.to(device)
             targets = targets.to(device)
-            outputs = net(inputs, targets)
-            debugging("Outputs sizes")
-            print(outputs[0].size())
-            print(outputs[1][0].size())
-            print(outputs[1][1].size())
-            print(outputs[1][2].size())
-            loss = cost_function(outputs[0], targets)#NEW Bottleneck
-            loss.backward()
-            samples += inputs.shape[0]
-            cumulative_loss += loss.item()
-            _, predicted = outputs.max(dim=1)
-            cumulative_accuracy += predicted.eq(targets).sum().item()
-    return cumulative_loss/samples, cumulative_accuracy/samples*100
+            outputs = net(inputs)
+            res = outputs.pandas().xyxy[0]
+            max_sim = 0
+            max_sim_class = ""
+            for ind in res.index:
+                t = res["name"][ind]
+                result = clip.tokenize(t).to(device)
+                sim = cosine_similarity(result.float(), targets.float())
+                if sim > max_sim:
+                    max_sim = sim
+                    max_sim_class = t
+            print("The predicted class is", max_sim_class)
+    #         debugging("Outputs sizes")
+    #         print(outputs[0].size())
+    #         print(outputs[1][0].size())
+    #         print(outputs[1][1].size())
+    #         print(outputs[1][2].size())
+    #         loss = cost_function(outputs[0], targets)#NEW Bottleneck
+    #         loss.backward()
+    #         samples += inputs.shape[0]
+    #         cumulative_loss += loss.item()
+    #         _, predicted = outputs.max(dim=1)
+    #         cumulative_accuracy += predicted.eq(targets).sum().item()
+    # return cumulative_loss/samples, cumulative_accuracy/samples*100
 
 # model, preprocess = clip.load('RN50', device=get_device())
 # print(clip.available_models())
