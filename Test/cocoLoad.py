@@ -19,7 +19,7 @@ class RefCOCO(Dataset):
     # target_transform: the transformation to be applied to the labels
     # device: the device to be used (cuda or cpu)
 
-    def __init__(self, annotations_file, img_dir, model, preprocess, transform=None, target_transform=None, device = 'cuda', sample_size=5023):
+    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=5023):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         #This is to save the labels in a csv file, it is not necessary, it is helpful to check the labels
@@ -31,7 +31,7 @@ class RefCOCO(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
-        self.encoded_img = self.encode_img()
+        self.encoded_img = self.get_img()
         self.description = self.get_texts()
 
     def __len__(self):
@@ -54,12 +54,22 @@ class RefCOCO(Dataset):
         return image_names
 
     def get_texts(self):
-        desc = []
         texts = []
-        for j in range(self.sample_size):
-            for i in range(len(self.img_texts.iloc[j, 2])):
-                desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
+        # for j in range(self.sample_size):
+        #     for i in range(len(self.img_texts.iloc[j, 2])):
+        #         desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
+        #         debugging(str(desc))
+        #     texts.append(desc)
+        for x in self.encoded_img:
+            ind = self.img_texts.index[self.img_texts["image_id"] == int(x.name.split("_")[2].split(".")[0])].tolist()
+            desc = []
+            for y in ind:
+                desc_dict = self.img_texts.iat[y, 2]
+                for z in desc_dict:
+                    desc.append(z["raw"])
+            #debugging(x.name + ":\n" + str(desc))
             texts.append(desc)
+        #debugging(str(texts))
         return texts
 
     def encode_img(self):
@@ -67,7 +77,6 @@ class RefCOCO(Dataset):
         # the required parameters are:
         # images_fp: the list of the images file names
         # texts: the list of the descriptions attached to the images
-        debugging("In encode_data")
         image_names = self.get_img()
         #open_img = [Image.open(image) for image in image_names]
         #images = [self.preprocess(image) for image in open_img]
@@ -78,7 +87,6 @@ class RefCOCO(Dataset):
         return image_names
 
     def encode_texts(self, desc_fp):#TODO: FIX size of target tensor
-        debugging("In encode_data: tokenize descriptions")
         text_tokens = clip.tokenize(desc_fp).to(self.device)
         #text_tokens = torch.tensor(text_tokens).to(self.device)
         #with torch.no_grad():
@@ -108,13 +116,11 @@ class RefCOCO(Dataset):
         #     image = self.transform(image_name)
         # if self.target_transform:
         #     desc = self.target_transform(desc)
-        debugging("In getitem")
         image = [str(self.encoded_img[idx])]
         # if self.transform:
         #      image = self.transform(image_)
-        img_desc = self.description[idx]
-        texts = self.encode_texts(img_desc)
-        debugging("In getitem: return")
+        texts = self.description[idx]
+        #texts = self.encode_texts(img_desc)
         return image, texts
 
 class RefCOCO_Split(RefCOCO):

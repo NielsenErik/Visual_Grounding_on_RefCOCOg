@@ -9,6 +9,7 @@ import clip
 # of the baseline idea YOLO + Clip
 # https://github.com/vijishmadhavan/Crop-CLIP/blob/master/Crop_CLIP.ipynb
 # https://stackoverflow.com/questions/73593712/calculating-similarities-of-text-embeddings-using-clip
+# https://github.com/openai/CLIP/blob/main/notebooks/Interacting_with_CLIP.ipynb
 
 #import YOLO model
 
