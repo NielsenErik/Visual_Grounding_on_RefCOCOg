@@ -5,6 +5,7 @@ import cv2
 import torchvision.transforms as T
 from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLoad.py
 from transformers import CLIPProcessor, CLIPModel
+import clip
 from printCalls import error, warning, debugging, info 
 
 get_device_first_call=True
@@ -12,7 +13,7 @@ def get_device():
     global get_device_first_call
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if get_device_first_call:
-        info("The current device is" + device)
+        info("The current device is " + device)
         get_device_first_call=False
     return device
 
@@ -142,12 +143,17 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader
 
+def train_step():
+    pass
+
 def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
+    yolo.eval()
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
             input = inputs[0][0]
             outputs = yolo(input)
             targets=[t[0] for t in targets]
+            debugging("Targets: " + str(targets))
             if len(targets)==0:
                 info("EMPTY TARGETS")
                 continue
@@ -156,16 +162,19 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
             CVimg = cv2.imread(input)
             PILimg = Image.open(input)
             result = outputs.pandas().xyxy[0]
+            clip_targets = clip.tokenize(targets).to(device)
             for ind in result.index:
+                debugging("Object: " + str(result["name"][ind]) + " - Confidence: " + str(result["confidence"][ind]))
                 if result["confidence"][ind] > yolo_threshold:
                     #2 foreach oggetto: valutazione similarità oggetto_ritagliato-target con clip (https://huggingface.co/docs/transformers/model_doc/clip#:~:text=from%20PIL%20import%20Image%0A%3E%3E%3E%20import%20requests%0A%0A%3E%3E%3E,take%20the%20softmax%20to%20get%20the%20label%20probabilities)
                     PILcropped = PILimg.crop((int(result["xmin"][ind]), int(result["ymin"][ind]), int(result["xmax"][ind]), int(result["ymax"][ind])))
-                    clip_inputs = clip_processor(text=targets, images=PILcropped, return_tensors="pt", padding=True)
-                    clip_outputs = clip_model(**clip_inputs)
-                    logits_per_image = clip_outputs.logits_per_image
+                    #clip_inputs = clip_processor(text=targets, images=PILcropped, return_tensors="pt", padding=True)
+                    clip_inputs = clip_processor(PILcropped).unsqueeze(0).to(device)
+                    logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, clip_targets)
+                    #logits_per_image = clip_outputs.logits_per_image
                     probs = logits_per_image.softmax(dim=1)
                     #3 prendere bounding box con massimo score di clip (e maggiore di determinato threshold) e visualizzare l'immagine con solo quella bounding box
-                    top_probs, top_labels = probs.cpu().topk(1, dim=-1)
+                    top_probs, top_labels = probs.cuda().squeeze().topk(1)
                     CVres = CVimg.copy()
                     bgcolor = (0,127,0) if float(top_probs[0]) > clip_threshold else (0,0,127)
                     rectcolor = (0,255,0) if float(top_probs[0]) > clip_threshold else (0,0,255)
@@ -189,9 +198,9 @@ annotations_file = 'refcocog/annotations/refs(umd).p'
 root_imgs = 'refcocog/images'
 
 yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
-#clip_model, clip_preprocess = clip.load('RN50', device=get_device())
-clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+clip_model, clip_processor = clip.load('RN50', device=device)
+#clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+#clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, sample_size=100)
 test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
