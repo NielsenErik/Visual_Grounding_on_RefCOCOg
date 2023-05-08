@@ -229,7 +229,7 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
                         CVres = putTextBg (CVres, str(targets[top_labels[0]]) + " " + str(int(float(top_probs[0])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, bgcolor)
                         debugging(str(targets[top_labels[0]]))
                         cv2.imshow("result", CVres)
-                    #cv2.waitKey(0)
+                    cv2.waitKey(0)
 
 ##next step: https://github.com/openai/CLIP/blob/main/notebooks/Interacting_with_CLIP.ipynb
             
@@ -253,9 +253,9 @@ clip_model, clip_processor = clip.load('RN50', device=device)
 
 optimizer = get_optimizer(yolo_model, learning_rate, weight_decay, momentum)
 
-train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, sample_size=100)
+train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, sample_size=50)
 test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
 
-train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
-test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
+# train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
+# test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
 
