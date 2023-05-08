@@ -17,6 +17,12 @@ def get_device():
         get_device_first_call=False
     return device
 
+def get_cost_function():
+    return torch.nn.CrossEntropyLoss()
+
+def get_optimizer(net, lr, wd, momentum):
+    return torch.optim.SGD(net.parameters(), lr=lr, weight_decay=wd, momentum=momentum)
+
 def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_color):
     text_size, _ = cv2.getTextSize(text, font, size, thickness)
     text_w, text_h = text_size
@@ -143,7 +149,43 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader
 
-def train_step():
+def training_step(yolo, data_loader,  optimizer, cost_function = get_cost_function(), device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
+    samples = 0.0
+    cumulative_loss = 0.0
+    cumulative_accuracy = 0.0
+    yolo.train()
+    debugging("Training step")
+    for batch_idx, (inputs, targets) in enumerate(data_loader):
+        input = inputs[0][0]
+        outputs = yolo(input)
+        debugging("Targets: " + str(targets))
+        if len(targets)==0:
+            info("EMPTY TARGETS IN TRAINING STEP")
+            continue
+        debugging("Training the network")
+        #1 estrazione degli oggetti dalle immagini proposte da Yolo (seguendo i bounding boxes)
+        CVimg = cv2.imread(input)
+        PILimg = Image.open(input)
+        result = outputs.pandas().xyxy[0]
+        targets=[t[0] for t in targets]
+        clip_targets = clip.tokenize(targets).to(device)
+        # loss computation
+        loss = torch.nn.CrossEntropyLoss(outputs, clip_targets)
+        # backward pass
+        loss.backward()        
+        # parameters update
+        optimizer.step()        
+        # gradients reset
+        optimizer.zero_grad()
+            # fetch prediction and loss value
+        samples += inputs.shape[0]
+        cumulative_loss += loss.item()
+        _, predicted = outputs.max(dim=1) # max() returns (maximum_value, index_of_maximum_value)
+        # compute training accuracy
+        cumulative_accuracy += predicted.eq(targets).sum().item()
+
+    return cumulative_loss / samples, cumulative_accuracy / samples * 100
+    
     pass
 
 def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
@@ -175,14 +217,19 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
                     probs = logits_per_image.softmax(dim=1)
                     #3 prendere bounding box con massimo score di clip (e maggiore di determinato threshold) e visualizzare l'immagine con solo quella bounding box
                     top_probs, top_labels = probs.cuda().squeeze().topk(1)
-                    CVres = CVimg.copy()
-                    bgcolor = (0,127,0) if float(top_probs[0]) > clip_threshold else (0,0,127)
-                    rectcolor = (0,255,0) if float(top_probs[0]) > clip_threshold else (0,0,255)
-                    cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), rectcolor, 4)
-                    CVres = putTextBg (CVres, str(targets[top_labels[0]]) + " " + str(int(float(top_probs[0])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, bgcolor)
-                    debugging(str(targets[top_labels[0]]))
-                    cv2.imshow("result", CVres)
-                    cv2.waitKey()
+                    debugging("Top probs: " + str(top_probs) + "Top probs type: " + str(type(top_probs)) + "Top probs shape: " + str(top_probs.shape) + " Top probs shape len: " + str(len(top_probs.shape)))
+                    if len(top_probs.shape)==0:
+                        debugging("EMPTY TOP PROBS")
+                        continue
+                    else:
+                        CVres = CVimg.copy()
+                        bgcolor = (0,127,0) if float(top_probs[0]) > clip_threshold else (0,0,127)
+                        rectcolor = (0,255,0) if float(top_probs[0]) > clip_threshold else (0,0,255)
+                        cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), rectcolor, 4)
+                        CVres = putTextBg (CVres, str(targets[top_labels[0]]) + " " + str(int(float(top_probs[0])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, bgcolor)
+                        debugging(str(targets[top_labels[0]]))
+                        cv2.imshow("result", CVres)
+                    #cv2.waitKey(0)
 
 ##next step: https://github.com/openai/CLIP/blob/main/notebooks/Interacting_with_CLIP.ipynb
             
@@ -190,8 +237,10 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
 
 batch_size = 1
 device = 'cuda:0'
+cost_function = get_cost_function()
 learning_rate = 0.001
 weight_decay = 0.000001
+momentum = 0.9
 epochs = 50,
 num_classes = 65,
 annotations_file = 'refcocog/annotations/refs(umd).p'
@@ -202,8 +251,11 @@ clip_model, clip_processor = clip.load('RN50', device=device)
 #clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 #clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
+optimizer = get_optimizer(yolo_model, learning_rate, weight_decay, momentum)
+
 train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, sample_size=100)
 test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
 
-
+train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
+test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
 
