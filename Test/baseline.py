@@ -75,6 +75,12 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     return train_loader, test_loader
 
 def plot_beginning(data_loader, preprocess, n_samples = 12):
+    # This function plots the first n_samples images in the data_loader
+    # with their corresponding texts
+    # data_loader: the data loader to be used
+    # preprocess: the preprocess function to be applied on the images
+    # n_samples: the number of samples to be plotted
+    
     original_images = []
     images = []
     texts = []
@@ -101,6 +107,15 @@ def plot_beginning(data_loader, preprocess, n_samples = 12):
     plt.savefig('Plots/beginning.png')
         
 def eval_step(yolo_model, clip_model, clip_preprocess, data_loader, device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
+    # This function evaluates the model on the data_loader
+    # yolo_model: the yolo model to be used
+    # clip_model: the clip model to be used
+    # clip_preprocess: the preprocess function to be applied on the images
+    # data_loader: the data loader to be used
+    # device: the device to be used for training
+    # yolo_threshold: the threshold to be used for yolo
+    # clip_threshold: the threshold to be used for clip
+    
     yolo_model.eval()
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
@@ -115,6 +130,7 @@ def eval_step(yolo_model, clip_model, clip_preprocess, data_loader, device=get_d
             targets = clip.tokenize(["This is " + desc for desc in targets]).cuda()
            
 def main(num_samples = 50):
+    # This is the main function that will be called to train the model
     info("Starting baseline")
     batch_size = 1
     device = get_device()
