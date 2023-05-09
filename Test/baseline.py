@@ -94,7 +94,7 @@ def plot_beginning(data_loader, preprocess, n_samples = 12):
         tmp = ""
         for text in descs:
             tmp += text[0] + "\n"
-        title_img = str(file_name[0][0])+"\n"+tmp
+        title_img = "File: " + str(file_name[0][0])+"\n"+tmp
         plt.subplot(3, 4, len(images) + 1)
         plt.imshow(image)
         plt.title(title_img, fontsize=8)
