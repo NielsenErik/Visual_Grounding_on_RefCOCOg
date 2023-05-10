@@ -235,8 +235,7 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
                         cv2.imshow("result", CVres)
                     cv2.waitKey(0)
 
-##next step: https://github.com/openai/CLIP/blob/main/notebooks/Interacting_with_CLIP.ipynb
-def eval_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.0, clip_threshold=0.0):
+def eval_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.2, clip_threshold=0.2):
     yolo.eval()       
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(data_loader):
@@ -247,6 +246,7 @@ def eval_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
             
             #Compute YOLO predictions
             outputs_yolo = yolo(input_img)
+            result = outputs_yolo.pandas().xyxy[0]
 
             #Compute CLIP predictions
             clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
@@ -258,16 +258,17 @@ def eval_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
             for i in range(0,4):
                 if float(top_probs[0][i]) > clip_threshold:
                     #Draw YOLO bounding box
-                    result = outputs_yolo.pandas().xyxy[0]
                     CVres = CVimg.copy()
-                    color=(0,0,127)
+                    color=(0,127,0)
+                    yolo_found=False
                     for ind in result.index:
                         if result["confidence"][ind] > yolo_threshold and YOLO_CLASSES.index(result["name"][ind])==top_labels[0][i]:
-                            color=(0,127,0)
+                            yolo_found=True
                             cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
-                    CVres = putTextBg (CVres, YOLO_SENTENCE[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
-                    cv2.imshow("result", CVres)
-                    cv2.waitKey(0)
+                    if yolo_found:
+                        CVres = putTextBg (CVres, YOLO_SENTENCE[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
+                        cv2.imshow("result", CVres)
+                        cv2.waitKey(0)
 
 batch_size = 1
 device = 'cuda:0'
