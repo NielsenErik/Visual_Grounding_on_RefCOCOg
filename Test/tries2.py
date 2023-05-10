@@ -30,88 +30,92 @@ def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_colo
     img = cv2.putText (img, text, org, font, size, fg_color, thickness, linetype)
     return img
 
-YOLO_CLASSES={
-    0: "person",
-    1: "bicycle",
-    2: "car",
-    3: "motorcycle",
-    4: "airplane",
-    5: "bus",
-    6: "train",
-    7: "truck",
-    8: "boat",
-    9: "traffic light",
-    10: "fire hydrant",
-    11: "stop sign",
-    12: "parking meter",
-    13: "bench",
-    14: "bird",
-    15: "cat",
-    16: "dog",
-    17: "horse",
-    18: "sheep",
-    19: "cow",
-    20: "elephant",
-    21: "bear",
-    22: "zebra",
-    23: "giraffe",
-    24: "backpack",
-    25: "umbrella",
-    26: "handbag",
-    27: "tie",
-    28: "suitcase",
-    29: "frisbee",
-    30: "skis",
-    31: "snowboard",
-    32: "sports ball",
-    33: "kite",
-    34: "baseball bat",
-    35: "baseball glove",
-    36: "skateboard",
-    37: "surfboard",
-    38: "tennis racket",
-    39: "bottle",
-    40: "wine glass",
-    41: "cup",
-    42: "fork",
-    43: "knife",
-    44: "spoon",
-    45: "bowl",
-    46: "banana",
-    47: "apple",
-    48: "sandwich",
-    49: "orange",
-    50: "broccoli",
-    51: "carrot",
-    52: "hot dog",
-    53: "pizza",
-    54: "donut",
-    55: "cake",
-    56: "chair",
-    57: "couch",
-    58: "potted plant",
-    59: "bed",
-    60: "dining table",
-    61: "toilet",
-    62: "tv",
-    63: "laptop",
-    64: "mouse",
-    65: "remote",
-    66: "keyboard",
-    67: "cell phone",
-    68: "microwave",
-    69: "oven",
-    70: "toaster",
-    71: "sink",
-    72: "refrigerator",
-    73: "book",
-    74: "clock",
-    75: "vase",
-    76: "scissors",
-    77: "teddy bear",
-    78: "hair drier",
-    79: "toothbrush"
-}
+YOLO_CLASSES=[
+    "person",
+    "bicycle",
+    "car",
+    "motorcycle",
+    "airplane",
+    "bus",
+    "train",
+    "truck",
+    "boat",
+    "traffic light",
+    "fire hydrant",
+    "stop sign",
+    "parking meter",
+    "bench",
+    "bird",
+    "cat",
+    "dog",
+    "horse",
+    "sheep",
+    "cow",
+    "elephant",
+    "bear",
+    "zebra",
+    "giraffe",
+    "backpack",
+    "umbrella",
+    "handbag",
+    "tie",
+    "suitcase",
+    "frisbee",
+    "skis",
+    "snowboard",
+    "sports ball",
+    "kite",
+    "baseball bat",
+    "baseball glove",
+    "skateboard",
+    "surfboard",
+    "tennis racket",
+    "bottle",
+    "wine glass",
+    "cup",
+    "fork",
+    "knife",
+    "spoon",
+    "bowl",
+    "banana",
+    "apple",
+    "sandwich",
+    "orange",
+    "broccoli",
+    "carrot",
+    "hot dog",
+    "pizza",
+    "donut",
+    "cake",
+    "chair",
+    "couch",
+    "potted plant",
+    "bed",
+    "dining table",
+    "toilet",
+    "tv",
+    "laptop",
+    "mouse",
+    "remote",
+    "keyboard",
+    "cell phone",
+    "microwave",
+    "oven",
+    "toaster",
+    "sink",
+    "refrigerator",
+    "book",
+    "clock",
+    "vase",
+    "scissors",
+    "teddy bear",
+    "hair drier",
+    "toothbrush"
+]
+YOLO_SENTENCE = []
+for el in YOLO_CLASSES:
+    YOLO_SENTENCE.append("This image contains a "+el)
+CLIP_TARGETS = clip.tokenize(YOLO_SENTENCE).to(get_device())
 
 def get_img_transform():
     transform = list()
@@ -204,36 +208,66 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
             CVimg = cv2.imread(input)
             PILimg = Image.open(input)
             result = outputs.pandas().xyxy[0]
-            clip_targets = clip.tokenize(targets).to(device)
+            #clip_targets = clip.tokenize(targets).to(device)
             for ind in result.index:
                 debugging("Object: " + str(result["name"][ind]) + " - Confidence: " + str(result["confidence"][ind]))
                 if result["confidence"][ind] > yolo_threshold:
                     #2 foreach oggetto: valutazione similarità oggetto_ritagliato-target con clip (https://huggingface.co/docs/transformers/model_doc/clip#:~:text=from%20PIL%20import%20Image%0A%3E%3E%3E%20import%20requests%0A%0A%3E%3E%3E,take%20the%20softmax%20to%20get%20the%20label%20probabilities)
-                    PILcropped = PILimg.crop((int(result["xmin"][ind]), int(result["ymin"][ind]), int(result["xmax"][ind]), int(result["ymax"][ind])))
+                    #PILcropped = PILimg.crop((int(result["xmin"][ind]), int(result["ymin"][ind]), int(result["xmax"][ind]), int(result["ymax"][ind])))
                     #clip_inputs = clip_processor(text=targets, images=PILcropped, return_tensors="pt", padding=True)
-                    clip_inputs = clip_processor(PILcropped).unsqueeze(0).to(device)
-                    logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, clip_targets)
+                    clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
+                    logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, CLIP_TARGETS)
                     #logits_per_image = clip_outputs.logits_per_image
                     probs = logits_per_image.softmax(dim=1)
                     #3 prendere bounding box con massimo score di clip (e maggiore di determinato threshold) e visualizzare l'immagine con solo quella bounding box
-                    top_probs, top_labels = probs.cuda().squeeze().topk(1)
-                    debugging("Top probs: " + str(top_probs) + "Top probs type: " + str(type(top_probs)) + "Top probs shape: " + str(top_probs.shape) + " Top probs shape len: " + str(len(top_probs.shape)))
-                    if len(top_probs.shape)==0:
-                        debugging("EMPTY TOP PROBS")
+                    top_probs, top_labels = probs.cuda().topk(1)
+                    #debugging("Top probs: " + str(top_probs) + " Top probs type: " + str(type(top_probs)) + " Top probs shape: " + str(top_probs.shape) + " Top probs shape len: " + str(len(top_probs.shape)))
+                    if len(top_probs)==0:
+                        info("EMPTY TOP PROBS")
                         continue
                     else:
                         CVres = CVimg.copy()
                         bgcolor = (0,127,0) if float(top_probs[0]) > clip_threshold else (0,0,127)
                         rectcolor = (0,255,0) if float(top_probs[0]) > clip_threshold else (0,0,255)
                         cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), rectcolor, 4)
-                        CVres = putTextBg (CVres, str(targets[top_labels[0]]) + " " + str(int(float(top_probs[0])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, bgcolor)
-                        debugging(str(targets[top_labels[0]]))
+                        CVres = putTextBg (CVres, str(YOLO_CLASSES[top_labels[0]]) + " " + str(int(float(top_probs[0])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, bgcolor)
+                        debugging(str(YOLO_CLASSES[top_labels[0]]))
                         cv2.imshow("result", CVres)
                     cv2.waitKey(0)
 
 ##next step: https://github.com/openai/CLIP/blob/main/notebooks/Interacting_with_CLIP.ipynb
+def eval_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.0, clip_threshold=0.0):
+    yolo.eval()       
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(data_loader):
+            #Init data
+            input_img = inputs[0][0]
+            CVimg = cv2.imread(input_img)
+            PILimg = Image.open(input_img)
             
+            #Compute YOLO predictions
+            outputs_yolo = yolo(input_img)
 
+            #Compute CLIP predictions
+            clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
+            logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, CLIP_TARGETS)
+            probs = logits_per_image.softmax(dim=1)
+            top_probs, top_labels = probs.cuda().topk(5, dim=-1)
+
+            #Draw bounding boxes for every probable class > threshold
+            for i in range(0,4):
+                if float(top_probs[0][i]) > clip_threshold:
+                    #Draw YOLO bounding box
+                    result = outputs_yolo.pandas().xyxy[0]
+                    CVres = CVimg.copy()
+                    color=(0,0,127)
+                    for ind in result.index:
+                        if result["confidence"][ind] > yolo_threshold and YOLO_CLASSES.index(result["name"][ind])==top_labels[0][i]:
+                            color=(0,127,0)
+                            cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
+                    CVres = putTextBg (CVres, YOLO_SENTENCE[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
+                    cv2.imshow("result", CVres)
+                    cv2.waitKey(0)
 
 batch_size = 1
 device = 'cuda:0'
@@ -254,7 +288,7 @@ clip_model, clip_processor = clip.load('RN50', device=device)
 optimizer = get_optimizer(yolo_model, learning_rate, weight_decay, momentum)
 
 train_loader, test_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, sample_size=50)
-test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
+eval_step(yolo_model, clip_model, clip_processor, test_loader)
 
 # train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
 # test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
