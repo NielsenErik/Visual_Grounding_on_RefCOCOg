@@ -110,7 +110,8 @@ def plot_beginning(data_loader, preprocess, n_samples = 12):
     plt.tight_layout()
     plt.savefig('Plots/beginning.png')
 
-def zero_shot_plots():
+def zero_shot_plots(data_loader, res_probs, res_labels, n_samples = 16):
+
     pass
      
 def eval_step(yolo_model, clip_model, clip_preprocess, data_loader, device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
@@ -175,6 +176,5 @@ def main(num_samples = 50):
     #plot_beginning(test_loader, clip_preprocess)
     info("Starting evaluation")
     res_probs, res_labes = eval_step(yolo_model, clip_model, clip_preprocess, test_loader, device)
-    print(res_probs)
-    print(res_labes)
+    zero_shot_plots(test_loader, res_probs, res_labes)
 main()
