@@ -31,6 +31,7 @@ class RefCOCO(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
+        self.img = self.get_img()
         self.encoded_img = self.get_img()
         self.description = self.get_texts()
 
@@ -92,7 +93,10 @@ class RefCOCO(Dataset):
         #with torch.no_grad():
         #    texts_z = self.model.encode_text(text_tokens).float()
         return text_tokens       
-        
+    
+    def __getimg__(self, idx):
+        image = str(self.img[idx])
+        return image
    
     def __getitem__(self, idx):
 
@@ -144,3 +148,6 @@ class RefCOCO_Split(RefCOCO):
 
     def __getitem__(self, idx):
         return super().__getitem__(idx)
+
+    def __getimg__(self, idx):
+        return super().__getimg__(idx)
