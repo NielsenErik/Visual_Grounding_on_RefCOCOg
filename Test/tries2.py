@@ -229,6 +229,7 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
                             cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
                     if yolo_found:
                         info(YOLO_SENTENCE[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
+                        warning("Press ESC to exit program, any other key to continue")
                         CVres = putTextBg (CVres, YOLO_SENTENCE[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
                         cv2.imshow("Result", CVres)
                         if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
