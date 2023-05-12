@@ -248,8 +248,6 @@ root_imgs = 'refcocog/images'
 
 yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
 clip_model, clip_processor = clip.load('RN50', device=device)
-#clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-#clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 optimizer = get_optimizer(yolo_model, learning_rate, weight_decay, momentum)
 

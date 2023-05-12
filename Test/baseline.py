@@ -123,9 +123,10 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
     yolo.eval()   
     yolo_classes = get_yolo_classes()   
     clip_target, yolo_sentence = get_yolo_sentence(device)
-    with torch.no_grad(): #important to mantain memory free  
+    with torch.no_grad(): #important to keep memory free  
         for index in range(data.__len__()):
             #Init data
+            cv2.destroyAllWindows() #new image, close previous windows
             input_img = data.__getimg__(index)
             info(input_img)
             CVimg = cv2.imread(input_img)
@@ -134,7 +135,7 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
             #Compute YOLO predictions
             outputs_yolo = yolo(input_img)
             result = outputs_yolo.pandas().xyxy[0]
-            debugging(str(type(result))+" "+str(result))
+
             #Compute CLIP predictions
             clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
             logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, clip_target)
@@ -154,7 +155,7 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
                             cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
                     if yolo_found:
                         info(yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
-                        warning("Press ESC to exit program, any other key to continue")
+                        info("Press ESC to exit program, any other key to continue")
                         CVres = putTextBg (CVres, yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
                         cv2.imshow("Result", CVres)
                         if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program

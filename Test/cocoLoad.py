@@ -46,21 +46,10 @@ class RefCOCO(Dataset):
             if filename.suffix in {'.png', '.jpg'}
         ]
         image_names =[image_names_tmp[i] for i in range(self.sample_size)]
-        # desc = []
-        # texts = []
-        # for j in range(self.sample_size):
-        #     for i in range(len(self.img_texts.iloc[j, 2])):
-        #         desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
-        #     texts.append(desc)
         return image_names
 
     def get_texts(self):
         texts = []
-        # for j in range(self.sample_size):
-        #     for i in range(len(self.img_texts.iloc[j, 2])):
-        #         desc.append(self.img_texts.iloc[j, 2][i]["raw"]) #TODO: FIX THIS size to match img sizes
-        #         debugging(str(desc))
-        #     texts.append(desc)
         for x in self.encoded_img:
             ind = self.img_texts.index[self.img_texts["image_id"] == int(x.name.split("_")[2].split(".")[0])].tolist()
             desc = []
@@ -68,9 +57,7 @@ class RefCOCO(Dataset):
                 desc_dict = self.img_texts.iat[y, 2]
                 for z in desc_dict:
                     desc.append(z["raw"])
-            #debugging(x.name + ":\n" + str(desc))
             texts.append(desc)
-        #debugging(str(texts))
         return texts
 
     def encode_img(self):
