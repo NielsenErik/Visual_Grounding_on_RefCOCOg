@@ -6,6 +6,7 @@ from pathlib import Path
 from printCalls import debugging, info
 from PIL import Image
 import clip
+import random
 
 class RefCOCO(Dataset):
     # This class is used to load the RefCOCO dataset, it is a subclass of Dataset.
@@ -31,9 +32,11 @@ class RefCOCO(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
+        self.max_len_desc=0
         self.img = self.get_img()
-        self.encoded_img = self.get_img()
         self.description = self.get_texts()
+        self.tok_texts = self.tokenize_texts()
+        self.empty_tok_text=clip.tokenize("").squeeze(0)
 
     def __len__(self):
         return self.sample_size
@@ -50,36 +53,27 @@ class RefCOCO(Dataset):
 
     def get_texts(self):
         texts = []
-        for x in self.encoded_img:
+        for x in self.img:
             ind = self.img_texts.index[self.img_texts["image_id"] == int(x.name.split("_")[2].split(".")[0])].tolist()
             desc = []
             for y in ind:
                 desc_dict = self.img_texts.iat[y, 2]
                 for z in desc_dict:
                     desc.append(z["raw"])
+            self.max_len_desc=len(desc) if len(desc)>self.max_len_desc else self.max_len_desc
             texts.append(desc)
-        return texts
+        #equal dimensions descriptions
+        #for t in texts:
+        #    if len(t) < self.max_len_desc:
+        #        for i in range(self.max_len_desc-len(t)):
+        #            t.append("")
+        return texts 
 
-    def encode_img(self):
-        # This function encode the images data and the text data
-        # the required parameters are:
-        # images_fp: the list of the images file names
-        # texts: the list of the descriptions attached to the images
-        image_names = self.get_img()
-        #open_img = [Image.open(image) for image in image_names]
-        #images = [self.preprocess(image) for image in open_img]
-        #images = torch.tensor(np.stack(images)).to(self.device)
-        #with torch.no_grad():
-            #images_z = self.model.encode_image(images).float()
-            #texts_z = self.model.encode_text(text_tokens).float()
-        return image_names
-
-    def encode_texts(self, desc_fp):#TODO: FIX size of target tensor
-        text_tokens = clip.tokenize(desc_fp).to(self.device)
-        #text_tokens = torch.tensor(text_tokens).to(self.device)
-        #with torch.no_grad():
-        #    texts_z = self.model.encode_text(text_tokens).float()
-        return text_tokens       
+    def tokenize_texts(self):
+        tok_texts=[]
+        for el in self.description:
+            tok_texts.append(clip.tokenize(el))
+        return tok_texts
     
     def __getimg__(self, idx):
         image = str(self.img[idx])
@@ -90,29 +84,14 @@ class RefCOCO(Dataset):
         # This function is used to get the item at the index idx
         # the required parameter is:
         # idx: the index of the item to be returned
-
-        # file_names = self.img_texts['file_name']#id string must be converted in 12 int digits 0000..xyzasd.jpg
-        # remove_id = self.img_texts['ann_id']
-        # file_name = file_names.iloc[idx].replace('_'+str(remove_id.iloc[idx])+'.jpg', '.jpg')
-        # image_name = os.path.join(self.img_dir, file_name)
-        # #image = read_image(image_name)
-        # desc = []
-        # texts = []
-        # for i in range(len(self.img_texts.iloc[idx, 2])):
-        #     desc.append(self.img_texts.iloc[idx, 2][i]["raw"]) #this are the lables shown as tuples, this must be fixed
-        # texts.append(desc)
-        # print(texts)
-        # desc = clip.tokenize(desc)
-        # if self.transform:
-        #     image = self.transform(image_name)
-        # if self.target_transform:
-        #     desc = self.target_transform(desc)
-        image = [str(self.encoded_img[idx])]
-        # if self.transform:
-        #      image = self.transform(image_)
-        texts = self.description[idx]
-        #texts = self.encode_texts(img_desc)
-        return image, texts
+        image = self.preprocess(Image.open(self.img[idx]))
+        texts = self.tok_texts[idx]
+        text = self.empty_tok_text
+        #debugging(str(texts.dim())+" "+str(texts.size()))
+        if texts.size(dim=0)>0:
+            text = texts[random.randint(0,texts.size(dim=0)-1)]
+        #debugging("--> "+str(text.dim())+" "+str(text.size()))
+        return image, text
 
 class RefCOCO_Split(RefCOCO):
     # This class is used to load the RefCOCO dataset, it is a subclass of Dataset.

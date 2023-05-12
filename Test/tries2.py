@@ -153,7 +153,8 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader, test_data
 
-def training_step(yolo, data_loader,  optimizer, cost_function = get_cost_function(), device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
+def training_step_old(yolo, data_loader,  optimizer, cost_function = get_cost_function(), device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
+    #https://github.com/openai/CLIP/issues/83#:~:text=for%20epoch%20in%20range,convert_weights(model)
     samples = 0.0
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
@@ -189,6 +190,34 @@ def training_step(yolo, data_loader,  optimizer, cost_function = get_cost_functi
         cumulative_accuracy += predicted.eq(targets).sum().item()
 
     return cumulative_loss / samples, cumulative_accuracy / samples * 100
+
+def training_step(model, train_dataloader,  optimizer, epoch=10, loss_img=get_cost_function(), loss_text=get_cost_function(), device=get_device()):
+    #https://github.com/openai/CLIP/issues/83#:~:text=for%20epoch%20in%20range,convert_weights(model)
+    for ep in range(epoch):
+        for batch_idx, batch in enumerate(train_dataloader) :
+            optimizer.zero_grad()
+
+            images, texts = batch 
+            
+            images = images.to(device)
+            texts = texts.to(device)
+            
+            logits_per_image, logits_per_text = model(images, texts)
+
+            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
+
+            total_loss = (loss_img(logits_per_image,ground_truth) + loss_text(logits_per_text,ground_truth))/2
+            debugging(str(ep)+" - "+str(batch_idx)+": "+str(total_loss))
+            total_loss.backward()
+            if device == "cpu":
+                optimizer.step()
+            else : 
+                for p in model.parameters(): 
+                    p.data = p.data.float() 
+                    p.grad.data = p.grad.data.float() 
+                optimizer.step()
+                clip.model.convert_weights(model)
+    return model
 
 def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
     yolo.eval()
@@ -235,7 +264,7 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
                         if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
                             return
 
-batch_size = 1
+batch_size = 8
 device = 'cuda:0'
 cost_function = get_cost_function()
 learning_rate = 0.001
@@ -251,8 +280,9 @@ clip_model, clip_processor = clip.load('RN50', device=device)
 
 optimizer = get_optimizer(yolo_model, learning_rate, weight_decay, momentum)
 
-train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, sample_size=50)
-eval_step(yolo_model, clip_model, clip_processor, test_data)
+train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=50)
+#eval_step(yolo_model, clip_model, clip_processor, test_data)
+training_step(clip_model, train_loader,  optimizer)
 
 # train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
 # test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
