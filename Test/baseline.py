@@ -21,7 +21,6 @@ import numpy as np
 #import YOLO model
 
 get_device_first_call=True
-
 def get_device():
     global get_device_first_call
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -175,7 +174,7 @@ def main(num_samples = 50):
     root_imgs = 'refcocog/images'
     
     yolo_classes = get_yolo_classes()
-    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, verbose=False)
     clip_model, clip_preprocess = clip.load("RN50", device=device)
     
     train_loader, test_loader, test_data = get_data(batch_size, annotations_file, root_imgs, clip_model, clip_preprocess, device, sample_size=num_samples)
