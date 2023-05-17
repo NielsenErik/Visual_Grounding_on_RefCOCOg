@@ -118,10 +118,11 @@ def zero_shot_plots(data_loader, res_probs, res_labels, n_samples = 16):
 
     pass
      
-def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_threshold=0.2, clip_threshold=0.0001):
+def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_threshold=0.2, clip_threshold=0.0001, show_img=False):
     yolo.eval()   
     yolo_classes = get_yolo_classes()   
     clip_target, yolo_sentence = get_yolo_sentence(device)
+    class_list = []
     with torch.no_grad(): #important to keep memory free  
         for index in range(data.__len__()):
             #Init data
@@ -140,25 +141,42 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
             logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, clip_target)
             probs = logits_per_image.softmax(dim=1)
             top_probs, top_labels = probs.cuda().topk(5, dim=-1)
-
+            #cCalculate confidence levele for each class
+            for ind in result.index:
+                tmp = []
+                tmp.append(result["name"][ind])
+                tmp.append(result["confidence"][ind])
             #Draw bounding boxes for every probable class > threshold
-            for i in range(0,4):
-                if float(top_probs[0][i]) > clip_threshold:
-                    #Draw YOLO bounding box
-                    CVres = CVimg.copy()
-                    color=(0,127,0)
-                    yolo_found=False
-                    for ind in result.index:
-                        if result["confidence"][ind] > yolo_threshold and yolo_classes.index(result["name"][ind])==top_labels[0][i]:
-                            yolo_found=True
-                            cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
-                    if yolo_found:
-                        info(yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
-                        info("Press ESC to exit program, any other key to continue")
-                        CVres = putTextBg (CVres, yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
-                        cv2.imshow("Result", CVres)
-                        if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
-                            return
+            print(class_list)
+            if show_img:
+                continue
+            else:
+                for i in range(0,4):
+                    if float(top_probs[0][i]) > clip_threshold:
+                        #Draw YOLO bounding box
+                        CVres = CVimg.copy()
+                        color=(0,127,0)
+                        yolo_found=False
+                        for ind in result.index:
+                            if result["confidence"][ind] > yolo_threshold and yolo_classes.index(result["name"][ind])==top_labels[0][i]:
+                                yolo_found=True
+                                cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
+                        if yolo_found:
+                            info(yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
+                            info("Press ESC to exit program, any other key to continue")
+                            CVres = putTextBg (CVres, yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
+                            cv2.imshow("Result", CVres)
+                            if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
+                                return
+    return class_list
+
+def print_eval(input):
+    yolo_classes = get_yolo_classes()
+    class_list = [len(yolo_classes)]
+    for i in range(len(input)):
+        
+        pass
+    pass
            
 def main(num_samples = 50):
     # This is the main function that will be called to train the model
@@ -180,5 +198,5 @@ def main(num_samples = 50):
     train_loader, test_loader, test_data = get_data(batch_size, annotations_file, root_imgs, clip_model, clip_preprocess, device, sample_size=num_samples)
     #plot_beginning(test_loader, clip_preprocess)
     info("Starting evaluation")
-    eval_step(yolo_model, clip_model, clip_preprocess, test_data, device)
+    eval_dict = eval_step(yolo_model, clip_model, clip_preprocess, test_data, device, show_img=True)
 main()
