@@ -142,12 +142,11 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
             probs = logits_per_image.softmax(dim=1)
             top_probs, top_labels = probs.cuda().topk(5, dim=-1)
             #cCalculate confidence levele for each class
-            for ind in result.index:
-                tmp = []
-                tmp.append(result["name"][ind])
-                tmp.append(result["confidence"][ind])
+            tmp = []
+            tmp.append(yolo_sentence[top_labels[0][0]])
+            tmp.append(float(top_probs[0][0]))
+            class_list.append(tmp)
             #Draw bounding boxes for every probable class > threshold
-            print(class_list)
             if show_img:
                 continue
             else:
@@ -162,23 +161,35 @@ def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_
                                 yolo_found=True
                                 cv2.rectangle (CVres, (int(result["xmin"][ind]), int(result["ymin"][ind])), (int(result["xmax"][ind]), int(result["ymax"][ind])), color, 4)
                         if yolo_found:
-                            info(yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
+                            info(yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")                        
                             info("Press ESC to exit program, any other key to continue")
                             CVres = putTextBg (CVres, yolo_sentence[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
                             cv2.imshow("Result", CVres)
                             if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
                                 return
+    
     return class_list
 
-def print_eval(input):
+def print_eval(input, device):
     yolo_classes = get_yolo_classes()
     class_list = [len(yolo_classes)]
-    for i in range(len(input)):
+    clip_target, yolo_sentence = get_yolo_sentence(device)
+    for sentence in yolo_sentence:
+        tmp = []
+        tmp.append(sentence)
+        for i in range(len(input)):
+            if input[i][0] == sentence:
+                tmp.append(input[i][1])
+        class_list.append(tmp)
+    print(class_list)
+    avgs = []
+    rmse = []
+    for i in range(1,len(class_list)):
         
-        pass
-    pass
+        pass    
+    
            
-def main(num_samples = 50):
+def main(num_samples = 100):
     # This is the main function that will be called to train the model
     info("Starting baseline")
     batch_size = 1
@@ -198,5 +209,6 @@ def main(num_samples = 50):
     train_loader, test_loader, test_data = get_data(batch_size, annotations_file, root_imgs, clip_model, clip_preprocess, device, sample_size=num_samples)
     #plot_beginning(test_loader, clip_preprocess)
     info("Starting evaluation")
-    eval_dict = eval_step(yolo_model, clip_model, clip_preprocess, test_data, device, show_img=True)
+    eval_list = eval_step(yolo_model, clip_model, clip_preprocess, test_data, device, show_img=True)
+    print_eval(eval_list, device)
 main()
