@@ -191,33 +191,45 @@ def training_step_old(yolo, data_loader,  optimizer, cost_function = get_cost_fu
 
     return cumulative_loss / samples, cumulative_accuracy / samples * 100
 
-def training_step(model, train_dataloader,  optimizer, epoch=10, loss_img=get_cost_function(), loss_text=get_cost_function(), device=get_device()):
+def training_step(model, train_dataloader,  optimizer, loss_img=get_cost_function(), device=get_device()):
     #https://github.com/openai/CLIP/issues/83#:~:text=for%20epoch%20in%20range,convert_weights(model)
-    for ep in range(epoch):
-        for batch_idx, batch in enumerate(train_dataloader) :
-            optimizer.zero_grad()
+    cumulative_accuracy = 0.0
+    cumulative_loss = 0.0
+    samples = 0.0
+    for batch_idx, batch in enumerate(train_dataloader) :
+        debugging("Batch #"+str(batch_idx))
 
-            images, texts = batch 
-            
-            images = images.to(device)
-            texts = texts.to(device)
-            
-            logits_per_image, logits_per_text = model(images, texts)
+        optimizer.zero_grad()
 
-            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
+        images, texts = batch 
+        
+        images = images.to(device)
+        texts = texts.to(device)
 
-            total_loss = (loss_img(logits_per_image,ground_truth) + loss_text(logits_per_text,ground_truth))/2
-            debugging(str(ep)+" - "+str(batch_idx)+": "+str(total_loss))
-            total_loss.backward()
-            if device == "cpu":
-                optimizer.step()
-            else : 
-                for p in model.parameters(): 
-                    p.data = p.data.float() 
-                    p.grad.data = p.grad.data.float() 
-                optimizer.step()
-                clip.model.convert_weights(model)
-    return model
+        
+        logits_per_image, logits_per_text = model(images, texts)
+        ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
+        #debugging(str(logits_per_image))
+        loss = loss_img(logits_per_image, ground_truth)
+        loss.backward()
+        #debugging(str(loss.item()))
+
+        cumulative_loss += loss.item() 
+        samples += images.shape[0]  
+        _, predicted = logits_per_image.max(dim=1)    
+        cumulative_accuracy += predicted.eq(ground_truth).sum().item()
+
+        if device == "cpu":
+            optimizer.step()
+        else : 
+            for p in model.parameters(): 
+                p.data = p.data.float() 
+                p.grad.data = p.grad.data.float() 
+            optimizer.step()
+            #clip.model.convert_weights(clip_model)
+
+    debugging(str(cumulative_loss))    
+    return cumulative_loss / samples, cumulative_accuracy / samples * 100
 
 def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device(), yolo_threshold=0.5, clip_threshold=0.5):
     yolo.eval()
@@ -270,19 +282,22 @@ cost_function = get_cost_function()
 learning_rate = 0.001
 weight_decay = 0.000001
 momentum = 0.9
-epochs = 50,
-num_classes = 65,
+epochs = 50
 annotations_file = 'refcocog/annotations/refs(umd).p'
 root_imgs = 'refcocog/images'
 
 yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
-clip_model, clip_processor = clip.load('RN50', device=device)
+clip_model, clip_processor = clip.load('RN50', device=device, jit=False)
 
-optimizer = get_optimizer(yolo_model, learning_rate, weight_decay, momentum)
+optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=50)
+train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=128)
 #eval_step(yolo_model, clip_model, clip_processor, test_data)
-training_step(clip_model, train_loader,  optimizer)
+for ep in range(epochs):
+    info("EPOCH "+str(ep)+":")
+    loss, accuracy = training_step(clip_model, train_loader, optimizer)
+    info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")
+    clip.model.convert_weights(clip_model)
 
 # train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
 # test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
