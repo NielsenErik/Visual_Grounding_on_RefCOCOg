@@ -196,16 +196,13 @@ def training_step(model, train_dataloader,  optimizer, loss_img=get_cost_functio
     cumulative_accuracy = 0.0
     cumulative_loss = 0.0
     samples = 0.0
+    model.train()
     for batch_idx, batch in enumerate(train_dataloader) :
-        debugging("Batch #"+str(batch_idx))
-
+        #debugging("Batch #"+str(batch_idx))
         optimizer.zero_grad()
-
-        images, texts = batch 
-        
+        images, texts = batch         
         images = images.to(device)
         texts = texts.to(device)
-
         
         logits_per_image, logits_per_text = model(images, texts)
         ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
@@ -213,7 +210,6 @@ def training_step(model, train_dataloader,  optimizer, loss_img=get_cost_functio
         loss = loss_img(logits_per_image, ground_truth)
         loss.backward()
         #debugging(str(loss.item()))
-
         cumulative_loss += loss.item() 
         samples += images.shape[0]  
         _, predicted = logits_per_image.max(dim=1)    
@@ -298,7 +294,7 @@ for ep in range(epochs):
     loss, accuracy = training_step(clip_model, train_loader, optimizer)
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")
     clip.model.convert_weights(clip_model)
-
+eval_step(yolo_model, clip_model, clip_processor, test_data)
 # train_loss, train_accuracy = training_step(yolo_model, train_loader, optimizer, cost_function)
 # test_step(yolo_model, clip_model, clip_processor, test_loader, clip_threshold=0.8)
 
