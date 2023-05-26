@@ -78,6 +78,10 @@ class RefCOCO(Dataset):
     def __getimg__(self, idx):
         image = str(self.img[idx])
         return image
+    
+    def __gettext__(self, idx):
+        text = self.description[idx]
+        return text
    
     def __getitem__(self, idx):
 

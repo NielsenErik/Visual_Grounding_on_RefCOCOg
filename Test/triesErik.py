@@ -8,6 +8,13 @@ from transformers import CLIPProcessor, CLIPModel
 import clip
 from printCalls import error, warning, debugging, info 
 
+def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_color):
+    text_size, _ = cv2.getTextSize(text, font, size, thickness)
+    text_w, text_h = text_size
+    img = cv2.rectangle(img, (org[0]-2, org[1]-text_h-2), (org[0] + text_w + 2, org[1] + 5), bg_color, -1)
+    img = cv2.putText (img, text, org, font, size, fg_color, thickness, linetype)
+    return img
+
 get_device_first_call=True
 def get_device():
     global get_device_first_call
@@ -38,7 +45,7 @@ def get_img_transform():
 def get_data(batch_size, annotations_file, img_root, model, preprocess = None, device = get_device(), sample_size = 5023):
     transform = get_img_transform()    
     training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size)
-    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size)
+    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=int(sample_size*0.2))
     num_training_samples = len(training_data)
     info("Number of training samples:" + str(num_training_samples))
     num_test_samples = len(test_data)
@@ -112,10 +119,36 @@ def test_step(net, test_loader, cost_function, device=get_device()):
         
     return cumulative_loss / samples, cumulative_accuracy / samples * 100
 
-def eval_step(clip_model, clip_processor, test_data):   
-    
-    pass
+def get_texts(data, device = get_device()):
+    text = []
+    for index in range(data.__len__()):
+        for desc in data.__gettext__(index):
+            text.append(desc)
+            clip_targets = clip.tokenize(text).to(device)
+    return text, clip_targets
 
+def eval_step(clip_model, clip_processor, data, device = get_device()):   
+    coco_desc, clip_targets = get_texts(data, device)
+    clip_threshold = 0.2
+    with torch.no_grad(): #important to mantain memory free  
+        for index in range(data.__len__()):
+                input_img = data.__getimg__(index)
+                info(input_img)
+                CVimg = cv2.imread(input_img)
+                PILimg = Image.open(input_img)
+                clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
+                logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, clip_targets)
+                probs = logits_per_image.softmax(dim=1)
+                top_probs, top_labels = probs.cuda().topk(5, dim=-1)
+                for i in range(0,4):
+                    #if float(top_probs[0][i]) > clip_threshold:
+                    CVres = CVimg.copy()
+                    color=(0,127,0)
+                    info(coco_desc[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
+                    CVres = putTextBg (CVres, coco_desc[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
+                    cv2.imshow("Result", CVres)
+                    if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
+                        return
 def main():
     batch_size = 8
     device = 'cuda:0'
@@ -132,8 +165,9 @@ def main():
 
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=512)
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=1024)
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
+    desc, tmp = get_texts(test_data)
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer)
@@ -142,6 +176,6 @@ def main():
     info("TESTING:")
     loss, accuracy =test_step(clip_model, test_loader, cost_function)
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
-
+    eval_step(clip_model, clip_processor, test_data)
 ##########################################################################################
 main()
