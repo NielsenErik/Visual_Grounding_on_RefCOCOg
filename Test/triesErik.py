@@ -7,6 +7,7 @@ from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLo
 from transformers import CLIPProcessor, CLIPModel
 import clip
 from printCalls import error, warning, debugging, info 
+from customClip import CustomClip
 
 def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_color):
     text_size, _ = cv2.getTextSize(text, font, size, thickness)
@@ -129,11 +130,10 @@ def get_texts(data, device = get_device()):
 
 def eval_step(clip_model, clip_processor, data, device = get_device()):   
     coco_desc, clip_targets = get_texts(data, device)
-    clip_threshold = 0.2
+    clip_threshold = 0.01
     with torch.no_grad(): #important to mantain memory free  
         for index in range(data.__len__()):
                 input_img = data.__getimg__(index)
-                info(input_img)
                 CVimg = cv2.imread(input_img)
                 PILimg = Image.open(input_img)
                 clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
@@ -141,14 +141,14 @@ def eval_step(clip_model, clip_processor, data, device = get_device()):
                 probs = logits_per_image.softmax(dim=1)
                 top_probs, top_labels = probs.cuda().topk(5, dim=-1)
                 for i in range(0,4):
-                    #if float(top_probs[0][i]) > clip_threshold:
-                    CVres = CVimg.copy()
-                    color=(0,127,0)
-                    info(coco_desc[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
-                    CVres = putTextBg (CVres, coco_desc[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
-                    cv2.imshow("Result", CVres)
-                    if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
-                        return
+                    if float(top_probs[0][i]) > clip_threshold:
+                        CVres = CVimg.copy()
+                        color=(0,127,0)
+                        info(coco_desc[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%")
+                        CVres = putTextBg (CVres, coco_desc[top_labels[0][i]] + " " + str(int(float(top_probs[0][i])*100))+"%", (0,10), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255,255,255), 1, cv2.LINE_AA, color)
+                        cv2.imshow("Result", CVres)
+                        if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
+                            return
 def main():
     batch_size = 8
     device = 'cuda:0'
@@ -160,9 +160,10 @@ def main():
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
 
-    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
-    clip_model, clip_processor = clip.load('RN50', device=device, jit=False)
-
+    #yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
+    custom_clip= CustomClip(device=device)
+    clip_model, clip_processor = custom_clip.__get_model__()
+    #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
     train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=1024)
