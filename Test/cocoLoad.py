@@ -20,7 +20,7 @@ class RefCOCO(Dataset):
     # target_transform: the transformation to be applied to the labels
     # device: the device to be used (cuda or cpu)
 
-    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=5023):
+    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=5023, batch_size=None):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         #This is to save the labels in a csv file, it is not necessary, it is helpful to check the labels
@@ -32,11 +32,13 @@ class RefCOCO(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
+        self.clip_model, _ = clip.load("RN50", device=self.device)
         self.max_len_desc=0
+        self.batch_size = batch_size
         self.img = self.get_img()
         self.description = self.get_texts()
-        self.tok_texts = self.tokenize_texts()
-        self.empty_tok_text=clip.tokenize("").squeeze(0)
+        #self.tok_texts = self.tokenize_texts()
+        #self.empty_tok_text=clip.tokenize("").squeeze(0)
 
     def __len__(self):
         return self.sample_size
@@ -68,12 +70,22 @@ class RefCOCO(Dataset):
         #        for i in range(self.max_len_desc-len(t)):
         #            t.append("")
         return texts 
-
-    def tokenize_texts(self):
-        tok_texts=[]
-        for el in self.description:
-            tok_texts.append(clip.tokenize(el))
-        return tok_texts
+    def set_empty_tok_text(self):
+        texts_z = clip.tokenize("Empty").to(self.device)
+        with torch.no_grad():
+            texts_z = self.clip_model.encode_text(texts_z).float()
+            texts_z /= texts_z.norm(dim=-1, keepdim=True)
+        return texts_z
+    
+    def tokenize_texts(self, idx):
+        if len(self.description[idx])==0:
+            tok_texts = clip.tokenize("Empty").to(self.device)
+        else:
+            tok_texts = clip.tokenize(self.description[idx][0]).to(self.device)
+        with torch.no_grad():
+            texts_z = self.clip_model.encode_text(tok_texts).float()      
+        #tok_texts /= tok_texts.norm(dim=-1, keepdim=True)
+        return texts_z
     
     def __getimg__(self, idx):
         image = str(self.img[idx])
@@ -84,17 +96,35 @@ class RefCOCO(Dataset):
         return text
    
     def __getitem__(self, idx):
-
+        max_len_desc = 10
         # This function is used to get the item at the index idx
         # the required parameter is:
         # idx: the index of the item to be returned
         image = self.preprocess(Image.open(self.img[idx]))
-        texts = self.tok_texts[idx]
-        text = self.empty_tok_text
-        #debugging(str(texts.dim())+" "+str(texts.size()))
-        if texts.size(dim=0)>0:
-            text = texts[random.randint(0,texts.size(dim=0)-1)]
-        #debugging("--> "+str(text.dim())+" "+str(text.size()))
+        if self.transform:
+            image = self.transform(image)
+        text = self.tokenize_texts(idx).squeeze()
+        # print(text.size())
+        # if self.transform:
+        #     image = self.transform(image)
+        
+        # if text.size(dim=0)>1:
+        #      text = text[random.randint(0,text.size(dim=0)-1)]
+        # elif len(text.size())<3:
+        #     text = text.unsqueeze(0)
+        # if len(text)>0:
+        #     text = text[random.randint(0,len(text)-1)]
+        # else:
+        #     text = ""
+        
+        # if len(text)==0:
+        #     text = ""
+        
+        
+        # text = list(self.description[idx])
+        # if len(text)==0:
+        #     text = ""
+        
         return image, text
 
 class RefCOCO_Split(RefCOCO):
@@ -110,8 +140,8 @@ class RefCOCO_Split(RefCOCO):
     # device: the device to be used, it can be 'cuda' or 'cpu'
     # sample_size: the size of the dataset to be loaded
 
-    def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'test', transform=None, target_transform=None, device='cuda', sample_size=5023):
-        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size)
+    def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'test', transform=None, target_transform=None, device='cuda', sample_size=5023, batch_size=None):
+        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size, batch_size)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
     def __len__(self):
         return super().__len__()
