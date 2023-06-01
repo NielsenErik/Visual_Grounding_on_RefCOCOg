@@ -202,7 +202,7 @@ def training_step(model, train_dataloader,  optimizer, loss_img=get_cost_functio
         optimizer.zero_grad()
         images, texts = batch         
         images = images.to(device)
-        texts = texts.to(device)
+        texts = texts.squeeze(1).to(device)
         
         logits_per_image, logits_per_text = model(images, texts)
         ground_truth = torch.arange(len(images), dtype=torch.long, device=device)
@@ -233,26 +233,25 @@ def test_step(yolo, clip_model, clip_processor, data_loader, device=get_device()
         for batch_idx, (inputs, targets) in enumerate(data_loader):
             pass
 
-def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_threshold=0.2, clip_threshold=0.2):
+def eval_step(yolo, clip_model, clip_processor, data, device=get_device(), yolo_threshold=0.04, clip_threshold=0.04):
     yolo.eval()     
     with torch.no_grad(): #important to mantain memory free  
         for index in range(data.__len__()):
             #Init data
-            input_img = data.__getimg__(index)
-            info(input_img)
-            CVimg = cv2.imread(input_img)
+            input_img, cv_input = data.__getimg__(index)
+            info(str(input_img))
+            CVimg = cv2.imread(cv_input)
             PILimg = Image.open(input_img)
             
             #Compute YOLO predictions
             outputs_yolo = yolo(input_img)
             result = outputs_yolo.pandas().xyxy[0]
-
             #Compute CLIP predictions
             clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
-            logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, CLIP_TARGETS)
+            logits_per_image, logits_per_textlip_outputs = clip_model(clip_inputs, CLIP_TARGETS.squeeze(1).to(device))
             probs = logits_per_image.softmax(dim=1)
             top_probs, top_labels = probs.cuda().topk(5, dim=-1)
-
+            print(top_probs)
             #Draw bounding boxes for every probable class > threshold
             for i in range(0,4):
                 if float(top_probs[0][i]) > clip_threshold:

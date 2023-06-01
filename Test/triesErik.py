@@ -47,6 +47,10 @@ def get_device():
 
 def get_cost_function(isImg=True):
     return torch.nn.CrossEntropyLoss()
+#RUNNING are the following:
+# CrossEntropyLoss()
+# HingeEmbeddingLoss()
+# SmoothL1Loss()
 
 def get_optimizer(net, lr, wd, momentum):
     return torch.optim.SGD(net.parameters(), lr=lr, weight_decay=wd, momentum=momentum)
@@ -191,7 +195,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=128)
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=2048)
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     desc, tmp = get_texts(test_data)
     for ep in range(epochs):

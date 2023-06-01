@@ -104,5 +104,5 @@ class CustomClip(torch.nn.Module):
         #x = self.encoder(x)
         #y = self.bottleneck(y)
         #x = self.bottleneck(x)
-        x = self.model.forward(x, y)
-        return x
+        x, y = self.model.forward(x, y)
+        return x, y
