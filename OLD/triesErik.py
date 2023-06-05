@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import torch
 from PIL import Image
 import cv2
@@ -9,25 +8,6 @@ from transformers import CLIPProcessor, CLIPModel
 import clip
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
-
-def random_get_text(all_texts):
-    small_list = []
-    for i in range(1000):
-        small_list.append(all_texts[np.random.randint(0,len(all_texts))])
-    return small_list
-
-def get_all_texts(annotations_file, smallTest=True):
-    x = pd.read_pickle(annotations_file)
-    img_texts = pd.DataFrame(x)
-    all_texts = []
-    for x in img_texts.iloc():
-        if x['split']=='test' and len(x['sentences'][0]['raw'])>0:
-            all_texts.append(x['sentences'][0]['raw'])
-    info("Number of texts: " + str(len(all_texts)))
-    if smallTest:
-        all_texts = random_get_text(all_texts)
-    info("Number of random sample: " + str(len(all_texts)))
-    return all_texts
 
 def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_color):
     text_size, _ = cv2.getTextSize(text, font, size, thickness)
@@ -45,12 +25,8 @@ def get_device():
         get_device_first_call=False
     return device
 
-def get_cost_function(isImg=True):
-    return torch.nn.CrossEntropyLoss()
-#RUNNING are the following:
-# CrossEntropyLoss()
-# HingeEmbeddingLoss()
-# SmoothL1Loss()
+def get_cost_function():
+    return torch.nn.MSELoss()
 
 def get_optimizer(net, lr, wd, momentum):
     return torch.optim.SGD(net.parameters(), lr=lr, weight_decay=wd, momentum=momentum)
@@ -78,46 +54,35 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
     return train_loader, test_loader, test_data
 
-def empty_token(model, device):
-    empty_desc = clip.tokenize("").to(device)
-    model, _ = clip.load("RN50", device=device)
-    with torch.no_grad():
-            empty_token = model.encode_text(empty_desc).float()  
-    return empty_token
-
-def training_step(model, train_dataloader,  optimizer, cost_function=get_cost_function(), device=get_device()):
+def training_step(model, train_dataloader,  optimizer, loss_func=get_cost_function(), device=get_device()):
     #https://github.com/openai/CLIP/issues/83#:~:text=for%20epoch%20in%20range,convert_weights(model)
     cumulative_accuracy = 0.0
     cumulative_loss = 0.0
     samples = 0.0
-    empty_desc = empty_token(model, device)
-    clip.model.convert_weights(model)
     model.train()
     for (images, texts) in train_dataloader:
-        optimizer.zero_grad()
-        #images, texts = batch
+        #images, texts = batch         
         images = images.to(device)
-        texts = texts.squeeze(1).to(device)
-        ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
+        texts = texts.to(device)
         logits_per_image, logits_per_texts = model(images, texts)
-        img_loss = cost_function(logits_per_image, ground_truth)
-        desc_loss = cost_function(logits_per_texts, ground_truth)
-        loss = (img_loss + desc_loss)/2
+        loss = loss_func(logits_per_image, logits_per_texts)
         loss.backward()
-        optimizer.step()        
+        optimizer.step()
+        optimizer.zero_grad()
         cumulative_loss += loss.item() 
-        #debugging(str(cumulative_loss))    
         samples += images.shape[0]  
         _, predicted = logits_per_image.max(dim=1)    
-        cumulative_accuracy += predicted.eq(ground_truth).sum().item()
-        if device == "cpu":
-            optimizer.step()
-        else : 
-            for p in model.model.parameters(): 
-                p.data = p.data.float() 
-                p.grad.data = p.grad.data.float() 
+        cumulative_accuracy += predicted.eq(logits_per_texts.max(dim=1)[1]).sum().item()
+        # if device == "cpu":
+        #     optimizer.step()
+        # else : 
+        #     for p in model.parameters(): 
+        #         p.data = p.data.float() 
+        #         p.grad.data = p.grad.data.float() 
         
-        clip.model.convert_weights(model)
+            #clip.model.convert_weights(clip_model)
+
+    debugging(str(cumulative_loss))    
     return cumulative_loss / samples, cumulative_accuracy / samples * 100
 
 def test_step(model, test_loader, cost_function, device=get_device()):
@@ -130,19 +95,16 @@ def test_step(model, test_loader, cost_function, device=get_device()):
     with torch.no_grad():
         # iterate over the test set
         for (images, texts) in test_loader:
-            #images, texts = batch
+            #images, texts = batch         
             images = images.to(device)
-            texts = texts.squeeze(1).to(device)
+            texts = texts.to(device)
             logits_per_image, logits_per_texts = model(images, texts)
-            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
-            img_loss = cost_function(logits_per_image, ground_truth)
-            desc_loss = cost_function(logits_per_texts, ground_truth)
-            loss = (img_loss + desc_loss)/2
+            loss = cost_function(logits_per_image, logits_per_texts)
             #debugging(str(loss.item()))
             cumulative_loss += loss.item() 
             samples += images.shape[0]  
             _, predicted = logits_per_image.max(dim=1)    
-            cumulative_accuracy += predicted.eq(ground_truth).sum().item()
+            cumulative_accuracy += predicted.eq(logits_per_texts.max(dim=1)[1]).sum().item()
         
     return cumulative_loss / samples, cumulative_accuracy / samples * 100
 
@@ -151,20 +113,19 @@ def get_texts(data, device = get_device()):
     for index in range(data.__len__()):
         for desc in data.__gettext__(index):
             text.append(desc)
-            clip_targets = clip.tokenize(text).squeeze().to(device)
+            clip_targets = clip.tokenize(text).to(device)
     return text, clip_targets
 
-def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device(), tranform = get_img_transform()):   
-    clip_threshold = 0.0005
-    input_text, _ = get_texts(data, device)
-    clip_targets = clip.tokenize(coco_desc).squeeze().to(device)
+def eval_step(clip_model, clip_processor, data, device = get_device()):   
+    coco_desc, _ = get_texts(data, device)
+    clip_threshold = 0.001
     with torch.no_grad(): #important to mantain memory free  
         for index in range(data.__len__()):
-                input_img, cv_input = data.__getimg__(index)
-                CVimg = cv2.imread(cv_input)
+                input_img = data.__getimg__(index)
+                CVimg = cv2.imread(input_img)
                 PILimg = Image.open(input_img)
                 clip_inputs = clip_processor(PILimg).unsqueeze(0).to(device)
-                logits_per_image, _ = clip_model(clip_inputs, clip_targets)
+                logits_per_image, _ = clip_model(clip_inputs)
                 probs = logits_per_image.softmax(dim=1)
                 top_probs, top_labels = probs.cuda().topk(5, dim=-1)
                 print(top_probs)
@@ -185,13 +146,13 @@ def main():
     learning_rate = 0.001
     weight_decay = 0.000001
     momentum = 0.9
-    epochs = 50
+    epochs = 5
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
-    all_texts = get_all_texts(annotations_file)
+
     #yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
     clip_model= CustomClip(device=device, batch_size=batch_size, norm=True)
-    _ , clip_processor = clip_model.__get_model__()
+    _, clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
@@ -206,6 +167,6 @@ def main():
     info("TESTING:")
     loss, accuracy =test_step(clip_model, test_loader, cost_function)
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
-    eval_step(clip_model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
+    eval_step(clip_model, clip_processor, test_data)
 ##########################################################################################
 main()

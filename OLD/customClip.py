@@ -3,8 +3,6 @@ from torch import nn
 import torch.nn.functional as F
 import clip
 
-#https://github.com/openai/CLIP/issues/83
-
 class BatchNorm2d(torch.nn.Module):
   def __init__(self, in_features, track_running_stats=False, affine=True, momentum=0.9):
     super().__init__()
@@ -65,18 +63,29 @@ class CustomClip(torch.nn.Module):
     def __init__(self, device, batch_size, norm=True, bias=False):
         super().__init__()
         self.device = device
-        model, self.preprocess = clip.load('RN50',device=self.device, jit=False)
-        self.model = model
+        self.model, self.preprocess = clip.load('RN50',device=self.device)
         #self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
         self.in_features = 1024
         self.out_features = 1024
-        
         self.bias = bias
         self.norm = norm
         self.batch_size = batch_size
         self.bottleneck = self.set_bottleneck()
         self.encoder = self.model.visual.float()
         #self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
+  
+        if self.norm:
+            self.bn1 = BatchNorm2d(self.in_features)   
+    
+    def encode_text(self, text):
+        
+        with torch.no_grad():
+          text = self.model.encode_text(text).float()
+          text /= text.norm(dim=-1, keepdim=True)
+        return text
+      
+    def encode_img(self, img):
+        return self.model.encode_image(img)
     
     def set_bottleneck(self):
         layer = [
@@ -94,15 +103,14 @@ class CustomClip(torch.nn.Module):
     
     def __get_boxes__(self):
         pass
-      
-      
-    def forward(self, x, y):
+    
+    def forward(self, x, y=None):
         # if self.norm:
         #     x = self.bn1(x)
         #     print("Normed")
-        
-        #x = self.encoder(x)
+        x = self.encoder(x)
+        if y is not None:
+            y = self.bottleneck(y)
         #y = self.bottleneck(y)
-        #x = self.bottleneck(x)
-        x, y = self.model.forward(x, y)
+        x = self.bottleneck(x)
         return x, y

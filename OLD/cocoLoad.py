@@ -79,43 +79,31 @@ class RefCOCO(Dataset):
     
     def tokenize_texts(self, idx):
         if len(self.description[idx])==0:
-            tok_texts = clip.tokenize("").to(self.device)
+            tok_texts = clip.tokenize("Empty").to(self.device)
         else:
-            choose_desc = random.randint(0, len(self.description[idx])-1)
-            tok_texts = clip.tokenize(self.description[idx][choose_desc]).to(self.device)
-        #with torch.no_grad():
-            #texts_z = self.clip_model.encode_text(tok_texts).float()      
+            tok_texts = clip.tokenize(self.description[idx][0]).to(self.device)
+        with torch.no_grad():
+            texts_z = self.clip_model.encode_text(tok_texts).float()      
         #tok_texts /= tok_texts.norm(dim=-1, keepdim=True)
-        return tok_texts
+        return texts_z
     
     def __getimg__(self, idx):
-        while self.check_empty_description(idx):
-            idx += 1
-        image = self.img[idx]
-        str_image = str(image)
-        return image, str_image
+        image = str(self.img[idx])
+        return image
     
     def __gettext__(self, idx):
-        idx = self.check_empty_description(idx)
         text = self.description[idx]
         return text
-    
-    def check_empty_description(self, idx):
-        while(idx<self.sample_size and len(self.description[idx])==0):
-            idx += 1
-        if idx>=self.sample_size-1:
-            idx = 0
-        return idx
+   
     def __getitem__(self, idx):
         max_len_desc = 10
         # This function is used to get the item at the index idx
         # the required parameter is:
         # idx: the index of the item to be returned
-        idx = self.check_empty_description(idx)
         image = self.preprocess(Image.open(self.img[idx]))
-        # if self.transform:
-        #     image = self.transform(image)
-        text = self.tokenize_texts(idx)
+        if self.transform:
+            image = self.transform(image)
+        text = self.tokenize_texts(idx).squeeze()
         # print(text.size())
         # if self.transform:
         #     image = self.transform(image)
