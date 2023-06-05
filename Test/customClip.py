@@ -2,6 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import clip
+import pandas as pd
+from printCalls import error, warning, debugging, info 
 
 #https://github.com/openai/CLIP/issues/83
 
@@ -65,9 +67,9 @@ class CustomClip(torch.nn.Module):
     def __init__(self, device, batch_size, norm=True, bias=False):
         super().__init__()
         self.device = device
-        model, self.preprocess = clip.load('RN50',device=self.device, jit=False)
+        model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
         self.model = model
-        #self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
+        self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
         self.in_features = 1024
         self.out_features = 1024
         
@@ -75,7 +77,7 @@ class CustomClip(torch.nn.Module):
         self.norm = norm
         self.batch_size = batch_size
         self.bottleneck = self.set_bottleneck()
-        self.encoder = self.model.visual.float()
+        #self.encoder = self.model.visual.float()
         #self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
     
     def set_bottleneck(self):
@@ -92,8 +94,30 @@ class CustomClip(torch.nn.Module):
     def __get_model__(self):
         return self.model, self.preprocess    
     
-    def __get_boxes__(self):
-        pass
+    def __get_boxes__(self, input_img, input_text):
+        detections = self.detector(input_img).pandas().xyxy[0]
+
+        max_sim=0
+        text_t = clip.tokenize(input_text).to(self.device)
+        with torch.no_grad():
+          enc_text = self.model.encode_text(text_t).float()
+        cos_sim = nn.CosineSimilarity()
+        for item in detections["name"]:
+          cl_t = clip.tokenize(item).to(self.device)
+          with torch.no_grad():
+            enc_cl = self.model.encode_text(cl_t).float()
+          dist = cos_sim(enc_cl, enc_text).item()
+          debugging("{} <-> {}: {:2.1%}".format(input_text, item, dist))
+          if dist > max_sim:
+             max_sim = dist
+             max_sim_cl = item
+
+        boxes = []
+        for _, item in detections.iterrows():
+           if item["name"] == max_sim_cl:
+              boxes.append({"xmin": int(item["xmin"]),"xmax": int(item["xmax"]),"ymin": int(item["ymin"]),"ymax": int(item["ymax"]),"confidence_class": item["confidence"], "confidence_text":max_sim})
+
+        return boxes
       
       
     def forward(self, x, y):

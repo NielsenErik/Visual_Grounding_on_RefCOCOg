@@ -154,7 +154,7 @@ def get_texts(data, device = get_device()):
             clip_targets = clip.tokenize(text).squeeze().to(device)
     return text, clip_targets
 
-def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device(), tranform = get_img_transform()):   
+def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device(), transform = get_img_transform()):   
     clip_threshold = 0.0005
     input_text, _ = get_texts(data, device)
     clip_targets = clip.tokenize(coco_desc).squeeze().to(device)
@@ -178,6 +178,16 @@ def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device()
                         cv2.imshow("Result", CVres)
                         if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
                             return
+                        
+def final_step(clip_model):
+    filename="refcocog\images\COCO_train2014_000000045049.jpg"
+    boxes = clip_model.__get_boxes__(filename, "there is a girl playing tennis")
+    img = cv2.imread(filename)
+    for item in boxes:
+        cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 4)
+    cv2.imshow("Result", img)
+    cv2.waitKey(0)
+
 def main():
     batch_size = 16 #must be 16 due to lenght of clip_targets
     device = 'cuda:0'
@@ -190,7 +200,7 @@ def main():
     root_imgs = 'refcocog/images'
     all_texts = get_all_texts(annotations_file)
     #yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
-    clip_model= CustomClip(device=device, batch_size=batch_size, norm=True)
+    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True)
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
@@ -206,6 +216,6 @@ def main():
     info("TESTING:")
     loss, accuracy =test_step(clip_model, test_loader, cost_function)
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
-    eval_step(clip_model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
+    eval_step(clip_model, clip_processor, test_data, all_texts, device=device, transform=get_img_transform())
 ##########################################################################################
 main()
