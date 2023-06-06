@@ -4,6 +4,7 @@ import cv2
 import random
 from pathlib import Path
 from printCalls import info, debugging, error, warning
+from cocoLoad import RefCOCO_Split
 
 get_device_first_call=True
 def get_device():
@@ -16,23 +17,27 @@ def get_device():
 
 def main():
     clip_model = CustomClip(device=get_device())
-    list_of_img = [img for img in Path("refcocog\images").glob('*')]
+    _, clip_processor = clip_model.__get_model__()
+    sample_size = len([p for p in Path("refcocog\images").glob('*')])
+    info("Total size: "+str(sample_size))
+    test_data = RefCOCO_Split(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog\images", model=clip_model, preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size, batch_size=1)
 
-    while True:
-        filename = random.choice(list_of_img)
-        info(str(filename))
-        img = cv2.imread(str(filename))
-        cv2.imshow("Input img", img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        info("Insert your sentence")
-        item = clip_model.__get_boxes_v2__(filename, input())
+    for i in range(100):
+        #filename = random.choice(list_of_img)
+        index = random.randint(0, test_data.__len__())
+        _, image = test_data.__getimg__(index)
+        textual_desc = random.choice(test_data.__gettext__(index))
+        info("{:05d}: {} --> {}".format(index, image, textual_desc))
+
+        img = cv2.imread(image)
+        item = clip_model.__get_boxes_v2__(image, textual_desc)
         if item is not None:
             cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 3)
             cv2.imshow("Result boxes", img)
             if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
-                cv2.destroyAllWindows()
                 return
+            cv2.destroyAllWindows()
         
 if __name__ == "__main__":
     main()
+    cv2.destroyAllWindows()

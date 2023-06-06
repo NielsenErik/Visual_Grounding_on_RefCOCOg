@@ -64,11 +64,7 @@ class RefCOCO(Dataset):
                     desc.append(z["raw"])
             self.max_len_desc=len(desc) if len(desc)>self.max_len_desc else self.max_len_desc
             texts.append(desc)
-        #equal dimensions descriptions
-        #for t in texts:
-        #    if len(t) < self.max_len_desc:
-        #        for i in range(self.max_len_desc-len(t)):
-        #            t.append("")
+
         return texts 
     def set_empty_tok_text(self):
         texts_z = clip.tokenize("Empty").to(self.device)
@@ -89,8 +85,7 @@ class RefCOCO(Dataset):
         return tok_texts
     
     def __getimg__(self, idx):
-        while self.check_empty_description(idx):
-            idx += 1
+        idx = self.check_empty_description(idx)
         image = self.img[idx]
         str_image = str(image)
         return image, str_image
