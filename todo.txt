@@ -1,6 +1,8 @@
 *TRAINING*
 - Train also with data augmentation (for example resize, crop, rotate, blur, grayscale images)
-
+- Apply batch normalization in bottleneck
+- Apply learning rate exponential (maybe not?)
+- Save & Reload
 
 *EVALUATION*
 1) Localization precision:
