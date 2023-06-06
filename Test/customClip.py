@@ -2,8 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import clip
-import pandas as pd
-from printCalls import error, warning, debugging, info 
+from PIL import Image
+from printCalls import error, warning, debugging, info
 
 #https://github.com/openai/CLIP/issues/83
 
@@ -64,7 +64,7 @@ class BatchNorm2d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
-    def __init__(self, device, batch_size, norm=True, bias=False):
+    def __init__(self, device, batch_size=128, norm=True, bias=False):
         super().__init__()
         self.device = device
         model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
@@ -94,7 +94,7 @@ class CustomClip(torch.nn.Module):
     def __get_model__(self):
         return self.model, self.preprocess    
     
-    def __get_boxes__(self, input_img, input_text):
+    def __get_boxes_v1__(self, input_img, input_text):
         detections = self.detector(input_img).pandas().xyxy[0]
 
         max_sim=0
@@ -118,6 +118,42 @@ class CustomClip(torch.nn.Module):
               boxes.append({"xmin": int(item["xmin"]),"xmax": int(item["xmax"]),"ymin": int(item["ymin"]),"ymax": int(item["ymax"]),"confidence_class": item["confidence"], "confidence_text":max_sim})
 
         return boxes
+    
+    def __get_boxes_v2__(self, input_img, input_text):
+        self.model.eval()
+        detections = self.detector(input_img).pandas().xyxy[0]
+        image = Image.open(input_img)
+        img_cropped = []
+        bounding_boxes = []
+        for _, item in detections.iterrows():
+          xmin = int(item["xmin"])-30 if int(item["xmin"])-30 >= 0 else 0
+          ymin = int(item["ymin"])-30 if int(item["ymin"])-30 >= 0 else 0
+          xmax = int(item["xmax"])+30 if int(item["xmax"])+30 <= image.size[0] else image.size[0]
+          ymax = int(item["ymax"])+30 if int(item["ymax"])+30 <= image.size[1] else image.size[1]
+          cropped = image.crop((xmin, ymin, xmax, ymax))
+          img_cropped.append(cropped)
+          bounding_boxes.append({"xmin": int(item["xmin"]), "ymin": int(item["ymin"]), "xmax": int(item["xmax"]), "ymax": int(item["ymax"])})
+
+        if(len(img_cropped)==0):
+           return None
+
+        tokenized_text = clip.tokenize([input_text]).to(self.device)
+        with torch.no_grad():
+          input_clip_txt = self.model.encode_text(tokenized_text).float()
+
+        cos_sim = nn.CosineSimilarity()
+
+        max_sim=0
+        for index, img in enumerate(img_cropped):
+          preprocessed_img = self.preprocess(img).unsqueeze(0).to(self.device)
+          with torch.no_grad():
+            input_clip_img = self.model.encode_image(preprocessed_img).float()
+          dist = cos_sim(input_clip_img, input_clip_txt).item()
+          if dist>max_sim:
+             max_sim=dist
+             max_sim_index = index
+          
+        return bounding_boxes[max_sim_index]
       
       
     def forward(self, x, y):
