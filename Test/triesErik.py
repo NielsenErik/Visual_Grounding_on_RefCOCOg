@@ -195,7 +195,7 @@ def main():
     learning_rate = 0.001
     weight_decay = 0.000001
     momentum = 0.9
-    epochs = 50
+    epochs = 20
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
     all_texts = get_all_texts(annotations_file)
@@ -207,7 +207,8 @@ def main():
 
     train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=2048)
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
-    desc, tmp = get_texts(test_data)
+    #desc, tmp = get_texts(test_data)
+    info("Init training...")
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
