@@ -1,6 +1,7 @@
 *TRAINING*
 - Train also with data augmentation (for example resize, crop, rotate, blur, grayscale images)
 - Apply batch normalization in bottleneck
+- Learning rate exponential (?)
 - Get a validation set to continue monitor during training
 - Save & Reload
 
