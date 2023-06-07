@@ -65,7 +65,7 @@ class BatchNorm2d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
-    def __init__(self, device, batch_size=128, norm=True, bias=True):
+    def __init__(self, device, batch_size=128, norm=False, bias=True):
         super().__init__()
         self.device = device
         model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
@@ -73,7 +73,9 @@ class CustomClip(torch.nn.Module):
         self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
         self.in_features = 1024
         self.out_features = 1024
-        
+        self.norm = norm
+        if self.norm:
+          self.bn1 = BatchNorm2d(self.in_features, track_running_stats=False, affine=True, momentum=0.9)
         self.bias = bias
         self.norm = norm
         self.batch_size = batch_size
