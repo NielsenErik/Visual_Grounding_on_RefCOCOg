@@ -198,7 +198,7 @@ def main():
     epochs = 20
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
-    all_texts = get_all_texts(annotations_file)
+    #all_texts = get_all_texts(annotations_file)
     #yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
     clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True)
     _ , clip_processor = clip_model.__get_model__()
@@ -217,6 +217,6 @@ def main():
     info("TESTING:")
     loss, accuracy =test_step(clip_model, test_loader, cost_function)
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
-    eval_step(clip_model, clip_processor, test_data, all_texts, device=device, transform=get_img_transform())
+    #eval_step(clip_model, clip_processor, test_data, all_texts, device=device, transform=get_img_transform())
 ##########################################################################################
 main()
