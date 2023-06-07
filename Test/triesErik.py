@@ -10,6 +10,8 @@ import clip
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
 from model_utilis import save_model, load_personal_model
+import math
+from torch.utils.tensorboard import SummaryWriter
 
 def random_get_text(all_texts):
     small_list = []
@@ -215,41 +217,58 @@ def final_step(clip_model):
     cv2.imshow("Result", img)
     cv2.waitKey(0)
 
+def update_parameters(learning_rate, weight_decay, momentum, alpha):
+    learning_rate = learning_rate * alpha
+    weight_decay = weight_decay * alpha
+    momentum = momentum * alpha
+    alpha = alpha/(alpha+0.001)
+    return learning_rate, weight_decay, momentum, alpha
+
 def main():
-    batch_size = 16 #must be 16 due to lenght of clip_targets
+    batch_size = 8 #must be 16 due to lenght of clip_targets
     device = 'cuda:0'
     cost_function = get_cost_function()
     learning_rate = 0.001
     weight_decay = 0.000001
     momentum = 0.9
     epochs = 20
+    e = math.exp(1)
+    alpha = 1
+    visualization_name='RefCOCOg'
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
     all_texts = get_all_texts(annotations_file)
     #yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
-    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True)
+    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=False, bias=True)
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
-    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
+    
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=2096)
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=1024)
 
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     #desc, tmp = get_texts(test_data)
+    writer = SummaryWriter(log_dir=f"runs/{visualization_name}")
     info("Init training...")
-
+    #optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     for ep in range(epochs):
-        info("EPOCH "+str(ep)+":")
-        loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
-        info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")
+        info("EPOCH "+str(ep)+":")        
+        optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
+        train_loss, train_accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
+        info("LOSS: "+str(train_loss)+" ACCURACY: "+str(train_accuracy)+"%")
+        writer.add_scalar('train/loss', train_loss, e + 1)
+        writer.add_scalar('train/accuracy', train_accuracy, e + 1)
+        learning_rate, weight_decay, momentum, alpha = update_parameters(learning_rate, weight_decay, momentum, alpha)
         #clip.model.convert_weights(clip_model)
     info("TESTING:")
     
-    loss, accuracy =test_step(clip_model, test_loader, cost_function)
-    save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
-    info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
-
+    test_loss, test_accuracy =test_step(clip_model, test_loader, cost_function)
+    save_model(clip_model, epochs, optimizer, train_loss, "Personal_Model")
+    info("LOSS: "+str(test_loss)+" ACCURACY: "+str(test_accuracy)+"%")  
+    writer.add_scalar('test/loss', test_loss, e + 1)
+    writer.add_scalar('test/accuracy', test_accuracy, e + 1)
     model, optimizer, epoch, loss = load_personal_model(clip_model, optimizer, "Personal_Model")
+    writer.close()
     eval_step(model, clip_processor, test_data, all_texts, device=device, transform=get_img_transform())
     final_step(model)
 ##########################################################################################

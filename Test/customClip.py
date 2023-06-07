@@ -8,15 +8,16 @@ from printCalls import error, warning, debugging, info
 
 #https://github.com/openai/CLIP/issues/83
 
-class BatchNorm2d(torch.nn.Module):
-  def __init__(self, in_features, track_running_stats=False, affine=True, momentum=0.9):
+class BatchNorm1d(torch.nn.Module):
+  def __init__(self, in_features, track_running_stats=True, affine=True, momentum=0.9, device = 'cuda:0'):
     super().__init__()
     
     self.in_features = in_features
     self.track_running_stats = track_running_stats
     self.affine = affine
-    self.momentum = momentum
     
+    self.device = device
+    self.momentum = momentum
     if self.affine:
       self.gamma = torch.nn.Parameter(torch.ones(self.in_features, 1))
       self.beta = torch.nn.Parameter(torch.zeros(self.in_features, 1))
@@ -28,26 +29,22 @@ class BatchNorm2d(torch.nn.Module):
       self.register_buffer('running_std', torch.ones(self.in_features, 1))
   
   def forward(self, x):
-    # transpose (N, C, H, W) to (C, N, H, W)
-    x = x.transpose(0, 1)
-    
-    # store the shape
-    c, bs, h, w = x.shape
-    
-    # collapse all dimensions except the 'channel' dimension
-    x = x.contiguous().view(c, -1)
+    # transpose (N, C) to (C, N)
+    x = x.to(self.device)
+    x = x.transpose(0, 1).contiguous().view(x.shape[1], -1).to(self.device)
     
     # calculate batch mean
-    mean = x.mean(dim=1).view(-1, 1)
+    mean = x.mean(dim=1).view(-1, 1).to(self.device)
     
     # calculate batch std
-    std = x.std(dim=1).view(-1, 1)
+    std = x.std(dim=1).view(-1, 1).to(self.device)
     
-    # keep running statistics (moving average of mean and std)
+    # during training keep running statistics (moving average of mean and std)
     if self.training and self.track_running_stats:
+      # no computational graph is necessary to be built for this computation
       with torch.no_grad():
-        self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mean
-        self.running_std = self.momentum * self.running_std + (1 - self.momentum) * std
+        self.running_mean = (self.momentum * self.running_mean + (1 - self.momentum) * mean)
+        self.running_std = (self.momentum * self.running_std + (1 - self.momentum) * std)
     
     # during inference time
     if not self.training and self.track_running_stats:
@@ -59,13 +56,13 @@ class BatchNorm2d(torch.nn.Module):
     
     # scale and shift the normalized activations
     if self.affine:
-      x = x * self.gamma + self.beta
-    
-    return x.view(c, bs, h, w).transpose(0, 1)
+      x = x * self.gamma.to(self.device) + self.beta.to(self.device)
+
+    return x.transpose(0, 1)
 
 
 class CustomClip(torch.nn.Module):
-    def __init__(self, device, batch_size=128, norm=False, bias=True):
+    def __init__(self, device, batch_size=128, norm=True, bias=True):
         super().__init__()
         self.device = device
         model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
@@ -75,16 +72,17 @@ class CustomClip(torch.nn.Module):
         self.out_features = 1024
         self.norm = norm
         if self.norm:
-          self.bn1 = BatchNorm2d(self.in_features, track_running_stats=False, affine=True, momentum=0.9)
+          self.bn1 = BatchNorm1d(self.in_features, track_running_stats=False, affine=False, momentum=0.9)
         self.bias = bias
         self.norm = norm
         self.batch_size = batch_size
-        self.bottleneck = self.set_bottleneck()
+        self.img_bottleneck = self.set_img_bottleneck()
+        self.txt_bottleneck = self.set_txt_bottleneck()
         self.encoder = self.model.visual.float()
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         #self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
     
-    def set_bottleneck(self):
+    def set_img_bottleneck(self):
         layer = [
                     torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
                     torch.nn.ReLU(inplace=True),
@@ -94,6 +92,17 @@ class CustomClip(torch.nn.Module):
                 ]   
         bottleneck = torch.nn.Sequential(*layer).to(self.device)
         return bottleneck
+    
+    def set_txt_bottleneck(self):
+       layer = [
+                    torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
+                    torch.nn.ReLU(inplace=True),
+                    torch.nn.Linear(self.in_features // 2, self.in_features // 2, bias=self.bias),
+                    torch.nn.ReLU(inplace=True),
+                    torch.nn.Linear(self.in_features // 2, self.out_features, bias=self.bias),
+       ]
+       bottleneck = torch.nn.Sequential(*layer).to(self.device)
+       return bottleneck
     
     def __get_model__(self):
         return self.model, self.preprocess    
@@ -160,17 +169,17 @@ class CustomClip(torch.nn.Module):
         return bounding_boxes[max_sim_index]
       
       
-    def forward(self, x, y):
+    def forward(self, image, text):
+        image = self.encoder(image).to(self.device)
+        image = self.img_bottleneck(image)
+        text = self.model.encode_text(text).to(self.device)
         if self.norm:
-            x = self.bn1(x)
-            info("Normed")
-        x = self.encoder(x)
-        x = self.bottleneck(x)
-        y = self.model.encode_text(y)
-        x = x / x.norm(dim=-1, keepdim=True)
-        y = y / y.norm(dim=-1, keepdim=True)
-
+            image = self.bn1(image).to(self.device)  
+            text = self.bn1(text).to(self.device)      
+        
+        image = image / image.norm(dim=-1, keepdim=True).float()
+        text = text / text.norm(dim=-1, keepdim=True).float()
         logit_scale = self.logit_scale.exp()
-        logits_per_image = logit_scale * x @ y.t()
+        logits_per_image = logit_scale * image @ text.t()
         logits_per_text = logits_per_image.t()
         return logits_per_image, logits_per_text
