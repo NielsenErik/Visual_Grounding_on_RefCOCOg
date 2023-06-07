@@ -230,6 +230,9 @@ def main():
     loss, accuracy = test_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(-1, loss, accuracy, "Validation")
+    loss, accuracy = test_step(clip_model, test_loader, cost_function)
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    tb.log_values(-1, loss, accuracy, "Test")
 
     info("INIT TRAINING...")
     for ep in range(epochs):
@@ -249,7 +252,7 @@ def main():
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(epochs, loss, accuracy, "Validation")
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
-    info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(epochs, loss, accuracy, "Test")
     tb.close()
 
