@@ -4,7 +4,7 @@ import cv2
 import random
 from pathlib import Path
 from printCalls import info, debugging, error, warning
-from cocoLoad import RefCOCO_Split
+from cocoLoad import RefCOCO
 
 get_device_first_call=True
 def get_device():
@@ -15,12 +15,13 @@ def get_device():
         get_device_first_call=False
     return device
 
-def main():
-    clip_model = CustomClip(device=get_device())
+def final_program(clip_model=None):
+    if clip_model is None:
+        clip_model = CustomClip(device=get_device())
     _, clip_processor = clip_model.__get_model__()
     sample_size = len([p for p in Path("refcocog/images").glob('*')])
     info("Total size: "+str(sample_size))
-    test_data = RefCOCO_Split(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog\images", model=clip_model, preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size, batch_size=1)
+    test_data = RefCOCO(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog/images", model=clip_model, preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size, batch_size=1)
 
     for i in range(100):
         #filename = random.choice(list_of_img)
@@ -39,5 +40,5 @@ def main():
             cv2.destroyAllWindows()
         
 if __name__ == "__main__":
-    main()
+    final_program()
     cv2.destroyAllWindows()
