@@ -220,15 +220,13 @@ def main():
     #desc, tmp = get_texts(test_data)
     info("INIT TRAINING...")
     tb = TensorBoard("run/exp1")
-
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
         info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-        tb.log_values(epoch, loss, accuracy, "Train")
-        #clip.model.convert_weights(clip_model)
-    info("TESTING...")
-    
+        tb.log_values(ep, loss, accuracy, "Train")
+
+    info("TESTING...")    
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
     info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(epochs, loss, accuracy, "Test")
