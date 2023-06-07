@@ -225,7 +225,7 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
     return learning_rate, weight_decay, momentum, alpha
 
 def main():
-    batch_size = 8 #must be 16 due to lenght of clip_targets
+    batch_size = 16 #must be 16 due to lenght of clip_targets
     device = 'cuda:0'
     cost_function = get_cost_function()
     learning_rate = 0.001
@@ -244,7 +244,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=1024)
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=20000)
 
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     #desc, tmp = get_texts(test_data)
