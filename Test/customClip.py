@@ -170,8 +170,13 @@ class CustomClip(torch.nn.Module):
       
       
     def forward(self, image, text):
+        debugging("Image: {}".format(image))
         image = self.encoder(image).to(self.device)
-        image = self.img_bottleneck(image)
+        image = self.img_bottleneck(image).to(self.device)
+        debugging('text: {}'.format(text))
+        debugging("Image: {} {}".format(image.shape, type(image)))
+        debugging("Text: {} {}".format(text.shape, type(text)))
+        text = text.float()
         text = self.model.encode_text(text).to(self.device)
         if self.norm:
             image = self.bn1(image).to(self.device)  
