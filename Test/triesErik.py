@@ -87,8 +87,8 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     num_eval_samples = len(eval_data)
     info("Number of eval samples:" + str(num_eval_samples))
     train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
-    eval_loader = torch.utils.data.DataLoader(eval_data, batch_size=batch_size, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=1, shuffle=False)
+    eval_loader = torch.utils.data.DataLoader(eval_data, batch_size=1, shuffle=False)
     return train_loader, test_loader, eval_loader
 
 def empty_token(model, device):
