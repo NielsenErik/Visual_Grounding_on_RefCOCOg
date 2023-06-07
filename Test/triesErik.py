@@ -233,7 +233,7 @@ def main():
     tb.close()
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
 
-    model, optimizer, epoch, loss = load_personal_model(clip_model, optimizer, "Personal_Model")
+    model, optimizer, epoch, loss = load_model(clip_model, optimizer, "Personal_Model")
     eval_step(model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
 ##########################################################################################
 main()
