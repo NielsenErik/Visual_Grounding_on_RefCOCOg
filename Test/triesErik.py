@@ -88,7 +88,8 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     info("Number of eval samples:" + str(num_eval_samples))
     train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
-    return train_loader, test_loader, eval_data
+    eval_loader = torch.utils.data.DataLoader(eval_data, batch_size=batch_size, shuffle=False)
+    return train_loader, test_loader, eval_loader
 
 def empty_token(model, device):
     empty_desc = clip.tokenize("").to(device)
@@ -225,10 +226,10 @@ def main():
     info("BEFORE TRAINING...")
     loss, accuracy = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(ep, loss, accuracy, "Train")
+    tb.log_values(-1, loss, accuracy, "Train")
     loss, accuracy = test_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(ep, loss, accuracy, "Validation")
+    tb.log_values(-1, loss, accuracy, "Validation")
 
     info("INIT TRAINING...")
     for ep in range(epochs):
@@ -243,10 +244,10 @@ def main():
     info("AFTER TRAINING...")
     loss, accuracy = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(ep, loss, accuracy, "Train")
+    tb.log_values(epochs, loss, accuracy, "Train")
     loss, accuracy = test_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(ep, loss, accuracy, "Validation")
+    tb.log_values(epochs, loss, accuracy, "Validation")
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
     info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(epochs, loss, accuracy, "Test")
