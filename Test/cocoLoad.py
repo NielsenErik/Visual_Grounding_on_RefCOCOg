@@ -20,11 +20,11 @@ class RefCOCO(Dataset):
     # target_transform: the transformation to be applied to the labels
     # device: the device to be used (cuda or cpu)
 
-    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=5023, batch_size=None):
+    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=5023, batch_size=None, split_type='train'):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
-        #This is to save the labels in a csv file, it is not necessary, it is helpful to check the labels
-        #self.img_labels.to_csv('Test/Data/labels.csv',index=False)
+        self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
+        #self.img_texts.to_csv('Test/Data/labels_'+split_type+'.csv', index=False)
         self.target_transform = target_transform
         self.device = device
         self.sample_size = sample_size
@@ -32,105 +32,58 @@ class RefCOCO(Dataset):
         self.transform = transform
         self.preprocess = preprocess
         self.model = model
-        self.clip_model, _ = clip.load("RN50", device=self.device)
-        self.max_len_desc=0
         self.batch_size = batch_size
-        self.img = self.get_img()
-        self.description = self.get_texts()
-        #self.tok_texts = self.tokenize_texts()
-        #self.empty_tok_text=clip.tokenize("").squeeze(0)
+        self.img, self.description = self.get_imgs_texts()
+        self.enc_txts = self.encode_texts()
+        self.enc_imgs = self.encode_images()
 
     def __len__(self):
-        return self.sample_size
+        return len(self.img)
 
-    def get_img(self):
-        # This function get the data inmages file names and the descriptions attached to them
-        img_dir = Path(self.img_dir)
-        image_names_tmp = [
-            filename for filename in img_dir.glob('*')
-            if filename.suffix in {'.png', '.jpg'}
-        ]
-        image_names =[image_names_tmp[i] for i in range(self.sample_size)]
-        return image_names
-
-    def get_texts(self):
-        texts = []
-        for x in self.img:
-            ind = self.img_texts.index[self.img_texts["image_id"] == int(x.name.split("_")[2].split(".")[0])].tolist()
-            desc = []
-            for y in ind:
-                desc_dict = self.img_texts.iat[y, 2]
-                for z in desc_dict:
-                    desc.append(z["raw"])
-            self.max_len_desc=len(desc) if len(desc)>self.max_len_desc else self.max_len_desc
-            texts.append(desc)
-
-        return texts 
-    def set_empty_tok_text(self):
-        texts_z = clip.tokenize("Empty").to(self.device)
-        with torch.no_grad():
-            texts_z = self.clip_model.encode_text(texts_z).float()
-            texts_z /= texts_z.norm(dim=-1, keepdim=True)
-        return texts_z
+    def get_imgs_texts(self):
+        images=[]
+        texts=[]
+        index=0
+        for _, el in self.img_texts.iterrows():
+            images.append(self.img_dir+"/"+el["file_name"][0:27]+".jpg")
+            sentences=[]
+            for sent in el["sentences"]:
+                sentences.append(sent["raw"])
+            texts.append(sentences)
+            index+=1
+            if index >= self.sample_size:
+                break
+        return images, texts
     
-    def tokenize_texts(self, idx):
-        if len(self.description[idx])==0:
-            tok_texts = clip.tokenize("").to(self.device)
-        else:
-            choose_desc = random.randint(0, len(self.description[idx])-1)
-            tok_texts = clip.tokenize(self.description[idx][choose_desc]).to(self.device)
-        #with torch.no_grad():
-            #texts_z = self.clip_model.encode_text(tok_texts).float()      
-        #tok_texts /= tok_texts.norm(dim=-1, keepdim=True)
-        return tok_texts
+    
+    def encode_texts(self):
+        enc_txts=[]
+        for txt in self.description:
+            enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
+        return enc_txts
+    
+    def encode_images(self):
+        enc_imgs=[]
+        for img in self.img:
+            enc_imgs.append(self.preprocess(Image.open(img)))
+        return enc_imgs
     
     def __getimg__(self, idx):
-        idx = self.check_empty_description(idx)
         image = self.img[idx]
         str_image = str(image)
         return image, str_image
     
     def __gettext__(self, idx):
-        idx = self.check_empty_description(idx)
         text = self.description[idx]
         return text
     
-    def check_empty_description(self, idx):
-        while(idx<self.sample_size and len(self.description[idx])==0):
-            idx += 1
-        if idx>=self.sample_size-1:
-            idx = 0
-        return idx
     def __getitem__(self, idx):
-        max_len_desc = 10
         # This function is used to get the item at the index idx
         # the required parameter is:
         # idx: the index of the item to be returned
-        idx = self.check_empty_description(idx)
-        image = self.preprocess(Image.open(self.img[idx]))
-        # if self.transform:
-        #     image = self.transform(image)
-        text = self.tokenize_texts(idx)
-        # print(text.size())
-        # if self.transform:
-        #     image = self.transform(image)
-        
-        # if text.size(dim=0)>1:
-        #      text = text[random.randint(0,text.size(dim=0)-1)]
-        # elif len(text.size())<3:
-        #     text = text.unsqueeze(0)
-        # if len(text)>0:
-        #     text = text[random.randint(0,len(text)-1)]
-        # else:
-        #     text = ""
-        
-        # if len(text)==0:
-        #     text = ""
-        
-        
-        # text = list(self.description[idx])
-        # if len(text)==0:
-        #     text = ""
+        #image = self.preprocess(Image.open(self.img[idx]))
+        image = self.enc_imgs[idx]
+        text = self.enc_txts[idx]        
         
         return image, text
 
@@ -147,9 +100,8 @@ class RefCOCO_Split(RefCOCO):
     # device: the device to be used, it can be 'cuda' or 'cpu'
     # sample_size: the size of the dataset to be loaded
 
-    def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'test', transform=None, target_transform=None, device='cuda', sample_size=5023, batch_size=None):
-        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size, batch_size)
-        self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
+    def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'train', transform=None, target_transform=None, device='cuda', sample_size=5023, batch_size=None):
+        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size, batch_size, split_type)
     def __len__(self):
         return super().__len__()
 

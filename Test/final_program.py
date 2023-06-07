@@ -18,7 +18,7 @@ def get_device():
 def main():
     clip_model = CustomClip(device=get_device())
     _, clip_processor = clip_model.__get_model__()
-    sample_size = len([p for p in Path("refcocog\images").glob('*')])
+    sample_size = len([p for p in Path("refcocog/images").glob('*')])
     info("Total size: "+str(sample_size))
     test_data = RefCOCO_Split(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog\images", model=clip_model, preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size, batch_size=1)
 
