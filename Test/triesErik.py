@@ -11,6 +11,8 @@ from printCalls import error, warning, debugging, info
 from customClip import CustomClip
 from model_utilis import save_model, load_model, TensorBoard
 import final_program
+import math
+from torch.utils.tensorboard import SummaryWriter
 
 
 def random_get_text(all_texts):
@@ -123,12 +125,12 @@ def training_step(model, train_dataloader,  optimizer, cost_function=get_cost_fu
         samples += images.shape[0]  
         _, predicted = logits_per_image.max(dim=1)    
         cumulative_accuracy += predicted.eq(ground_truth).sum().item()
-        if device == "cpu":
-            optimizer.step()
-        else : 
-            for p in model.model.parameters(): 
-                p.data = p.data.float() 
-                p.grad.data = p.grad.data.float() 
+        # if device == "cpu":
+        #     optimizer.step()
+        # else : 
+        #     for p in model.model.parameters(): 
+        #         p.data = p.data.float() 
+        #         p.grad.data = p.grad.data.float() 
         
         clip.model.convert_weights(model)
     return cumulative_loss / samples, cumulative_accuracy / samples
@@ -191,13 +193,20 @@ def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device()
                             return
                         
 def final_step(clip_model):
-    filename="refcocog\images\COCO_train2014_000000045049.jpg"
-    boxes = clip_model.__get_boxes__(filename, "there is a girl playing tennis")
+    filename="refcocog/images/COCO_train2014_000000045049.jpg"
+    boxes = clip_model.__get_boxes_v1__(filename, "there is a girl playing tennis")
     img = cv2.imread(filename)
     for item in boxes:
         cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 4)
     cv2.imshow("Result", img)
     cv2.waitKey(0)
+
+def update_parameters(learning_rate, weight_decay, momentum, alpha):
+    learning_rate = learning_rate * alpha
+    weight_decay = weight_decay * alpha
+    momentum = momentum * alpha
+    alpha = alpha/(alpha+0.001)
+    return learning_rate, weight_decay, momentum, alpha
 
 def main():
     batch_size = 16 #must be 16 due to lenght of clip_targets
@@ -207,15 +216,17 @@ def main():
     weight_decay = 0.000001
     momentum = 0.9
     epochs = 20
+    e = math.exp(1)
+    alpha = 1
+    visualization_name='RefCOCOg'
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
     all_texts = get_all_texts(annotations_file)
     #yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
-    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True)
+    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=False, bias=True)
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
-    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
-
+    
     train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=1000, sample_size_test=100, sample_size_val=50)
 
     #eval_step(yolo_model, clip_model, clip_processor, val_loader)
@@ -262,5 +273,6 @@ def main():
     model, optimizer, epoch, loss = load_model(clip_model, optimizer, "Personal_Model")
     #eval_step(model, clip_processor, val_loader, all_texts, device=device)
     final_program.final_program(model)
+
 ##########################################################################################
 main()
