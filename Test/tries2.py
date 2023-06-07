@@ -286,7 +286,7 @@ clip_model, clip_processor = clip.load('RN50', device=device, jit=False)
 
 optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=128)
+train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=10000)
 #eval_step(yolo_model, clip_model, clip_processor, test_data)
 for ep in range(epochs):
     info("EPOCH "+str(ep)+":")

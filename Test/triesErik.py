@@ -9,6 +9,26 @@ from transformers import CLIPProcessor, CLIPModel
 import clip
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
+from model_utilis import save_model, load_personal_model
+
+def random_get_text(all_texts):
+    small_list = []
+    for i in range(1000):
+        small_list.append(all_texts[np.random.randint(0,len(all_texts))])
+    return small_list
+
+def get_all_texts(annotations_file, smallTest=False):
+    x = pd.read_pickle(annotations_file)
+    img_texts = pd.DataFrame(x)
+    all_texts = []
+    for x in img_texts.iloc():
+        if x['split']=='test' and len(x['sentences'][0]['raw'])>0:
+            all_texts.append(x['sentences'][0]['raw'])
+    info("Number of texts: " + str(len(all_texts)))
+    if smallTest:
+        all_texts = random_get_text(all_texts)
+    info("Number of random sample: " + str(len(all_texts)))
+    return all_texts
 
 def random_get_text(all_texts):
     small_list = []
@@ -67,16 +87,28 @@ def get_img_transform():
     return transform
 
 def get_data(batch_size, annotations_file, img_root, model, preprocess = None, device = get_device(), sample_size = 5023):
+<<<<<<< HEAD
     transform = get_img_transform()    
     training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size, batch_size=batch_size)
     test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=int(sample_size*0.2), batch_size=batch_size)
+=======
+    transform = get_img_transform()
+      
+    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size, batch_size=batch_size)
+    if sample_size > 5023:
+        sample_size = 5023 
+    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size, batch_size=batch_size)
+    eval_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', transform=transform, device=device, sample_size=int(sample_size*0.01), batch_size=batch_size)
+>>>>>>> e1ec63b (added model_save and model_load)
     num_training_samples = len(training_data)
     info("Number of training samples:" + str(num_training_samples))
     num_test_samples = len(test_data)
     info("Number of test samples:" + str(num_test_samples))
+    num_eval_samples = len(eval_data)
+    info("Number of eval samples:" + str(num_eval_samples))
     train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_data, batch_size=batch_size, shuffle=False)
-    return train_loader, test_loader, test_data
+    return train_loader, test_loader, eval_data
 
 def empty_token(model, device):
     empty_desc = clip.tokenize("").to(device)
@@ -85,6 +117,10 @@ def empty_token(model, device):
             empty_token = model.encode_text(empty_desc).float()  
     return empty_token
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> e1ec63b (added model_save and model_load)
 def training_step(model, train_dataloader,  optimizer, cost_function=get_cost_function(), device=get_device()):
     #https://github.com/openai/CLIP/issues/83#:~:text=for%20epoch%20in%20range,convert_weights(model)
     cumulative_accuracy = 0.0
@@ -156,7 +192,11 @@ def get_texts(data, device = get_device()):
 
 def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device(), tranform = get_img_transform()):   
     clip_threshold = 0.0005
+<<<<<<< HEAD
     input_text, _ = get_texts(data, device)
+=======
+    #input_text, _ = get_texts(data, device)
+>>>>>>> e1ec63b (added model_save and model_load)
     clip_targets = clip.tokenize(coco_desc).squeeze().to(device)
     with torch.no_grad(): #important to mantain memory free  
         for index in range(data.__len__()):
@@ -195,17 +235,28 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
+<<<<<<< HEAD
     train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=2048)
+=======
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=100)
+>>>>>>> e1ec63b (added model_save and model_load)
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
-    desc, tmp = get_texts(test_data)
+    #desc, tmp = get_texts(test_data)
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
         info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")
         #clip.model.convert_weights(clip_model)
     info("TESTING:")
+    
     loss, accuracy =test_step(clip_model, test_loader, cost_function)
+    save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
+<<<<<<< HEAD
     eval_step(clip_model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
+=======
+    model, optimizer, epoch, loss = load_personal_model(clip_model, optimizer, "Personal_Model")
+    eval_step(model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
+>>>>>>> e1ec63b (added model_save and model_load)
 ##########################################################################################
 main()
