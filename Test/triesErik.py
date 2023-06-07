@@ -25,10 +25,10 @@ def get_all_texts(annotations_file, smallTest=True):
     for x in img_texts.iloc():
         if x['split']=='test' and len(x['sentences'][0]['raw'])>0:
             all_texts.append(x['sentences'][0]['raw'])
-    info("Number of texts: " + str(len(all_texts)))
+    #info("Number of texts: " + str(len(all_texts)))
     if smallTest:
         all_texts = random_get_text(all_texts)
-    info("Number of random sample: " + str(len(all_texts)))
+    #info("Number of random sample: " + str(len(all_texts)))
     return all_texts
 
 def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_color):
@@ -75,7 +75,7 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     sample_size_train = sample_size_train if sample_size_train <= 42226 else 42226
     sample_size_test = sample_size_test if sample_size_test <= 5023 else 5023
     sample_size_val = sample_size_val if sample_size_val <= 2573 else 2573
-    training_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size_train, batch_size=batch_size)
+    training_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size_train, batch_size=batch_size, augment_data=True)
     test_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size_test, batch_size=batch_size)
     eval_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', transform=transform, device=device, sample_size=sample_size_val, batch_size=batch_size)
 
@@ -136,8 +136,7 @@ def test_step(model, test_loader, cost_function, device=get_device()):
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
     model.eval() 
-    debugging("Testing")
-  # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
+    # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
     with torch.no_grad():
         # iterate over the test set
         for (images, texts) in test_loader:
@@ -219,14 +218,14 @@ def main():
 
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     #desc, tmp = get_texts(test_data)
-    info("Init training...")
+    info("INIT TRAINING...")
 
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
         info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")
         #clip.model.convert_weights(clip_model)
-    info("TESTING:")
+    info("TESTING...")
     
     loss, accuracy =test_step(clip_model, test_loader, cost_function)
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
