@@ -1,4 +1,7 @@
 refcocog.tar.gz
 refcocog
+*.csv
+*.pt
+*.pyc
+Personal_Model
 runs/RefCOCOg/*
-Personal_Model/*
