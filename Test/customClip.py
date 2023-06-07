@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch import nn
 import torch.nn.functional as F
 import clip
@@ -64,7 +65,7 @@ class BatchNorm2d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
-    def __init__(self, device, batch_size=128, norm=True, bias=False):
+    def __init__(self, device, batch_size=128, norm=False, bias=True):
         super().__init__()
         self.device = device
         model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
@@ -72,12 +73,15 @@ class CustomClip(torch.nn.Module):
         self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
         self.in_features = 1024
         self.out_features = 1024
-        
+        self.norm = norm
+        if self.norm:
+          self.bn1 = BatchNorm2d(self.in_features, track_running_stats=False, affine=True, momentum=0.9)
         self.bias = bias
         self.norm = norm
         self.batch_size = batch_size
         self.bottleneck = self.set_bottleneck()
-        #self.encoder = self.model.visual.float()
+        self.encoder = self.model.visual.float()
+        self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         #self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
     
     def set_bottleneck(self):
@@ -157,12 +161,16 @@ class CustomClip(torch.nn.Module):
       
       
     def forward(self, x, y):
-        # if self.norm:
-        #     x = self.bn1(x)
-        #     print("Normed")
-        
-        #x = self.encoder(x)
-        #y = self.bottleneck(y)
-        #x = self.bottleneck(x)
-        x, y = self.model.forward(x, y)
-        return x, y
+        if self.norm:
+            x = self.bn1(x)
+            info("Normed")
+        x = self.encoder(x)
+        x = self.bottleneck(x)
+        y = self.model.encode_text(y)
+        x = x / x.norm(dim=-1, keepdim=True)
+        y = y / y.norm(dim=-1, keepdim=True)
+
+        logit_scale = self.logit_scale.exp()
+        logits_per_image = logit_scale * x @ y.t()
+        logits_per_text = logits_per_image.t()
+        return logits_per_image, logits_per_text

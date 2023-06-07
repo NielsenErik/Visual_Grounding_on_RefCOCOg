@@ -138,12 +138,12 @@ def training_step(model, train_dataloader,  optimizer, cost_function=get_cost_fu
         samples += images.shape[0]  
         _, predicted = logits_per_image.max(dim=1)    
         cumulative_accuracy += predicted.eq(ground_truth).sum().item()
-        if device == "cpu":
-            optimizer.step()
-        else : 
-            for p in model.model.parameters(): 
-                p.data = p.data.float() 
-                p.grad.data = p.grad.data.float() 
+        # if device == "cpu":
+        #     optimizer.step()
+        # else : 
+        #     for p in model.model.parameters(): 
+        #         p.data = p.data.float() 
+        #         p.grad.data = p.grad.data.float() 
         
         clip.model.convert_weights(model)
     return cumulative_loss / samples, cumulative_accuracy / samples * 100
@@ -207,8 +207,8 @@ def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device()
                             return
                         
 def final_step(clip_model):
-    filename="refcocog\images\COCO_train2014_000000045049.jpg"
-    boxes = clip_model.__get_boxes__(filename, "there is a girl playing tennis")
+    filename="refcocog/images/COCO_train2014_000000045049.jpg"
+    boxes = clip_model.__get_boxes_v1__(filename, "there is a girl playing tennis")
     img = cv2.imread(filename)
     for item in boxes:
         cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 4)
@@ -232,7 +232,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=100)
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=2096)
 
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     #desc, tmp = get_texts(test_data)
@@ -250,6 +250,7 @@ def main():
     info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
 
     model, optimizer, epoch, loss = load_personal_model(clip_model, optimizer, "Personal_Model")
-    eval_step(model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
+    eval_step(model, clip_processor, test_data, all_texts, device=device, transform=get_img_transform())
+    final_step(model)
 ##########################################################################################
 main()
