@@ -47,7 +47,7 @@ class RefCOCO(Dataset):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
-        self.img_texts.to_csv('Test/Data/labels_'+split_type+'.csv', index=False)
+        #self.img_texts.to_csv('Test/Data/labels_'+split_type+'.csv', index=False)
         self.target_transform = target_transform
         self.device = device
         self.sample_size = sample_size

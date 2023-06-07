@@ -9,7 +9,7 @@ from transformers import CLIPProcessor, CLIPModel
 import clip
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
-from model_utilis import save_model, load_personal_model
+from model_utilis import save_model, load_model, TensorBoard
 
 
 def random_get_text(all_texts):
@@ -129,7 +129,7 @@ def training_step(model, train_dataloader,  optimizer, cost_function=get_cost_fu
                 p.grad.data = p.grad.data.float() 
         
         clip.model.convert_weights(model)
-    return cumulative_loss / samples, cumulative_accuracy / samples * 100
+    return cumulative_loss / samples, cumulative_accuracy / samples
 
 def test_step(model, test_loader, cost_function, device=get_device()):
     samples = 0.0
@@ -154,7 +154,7 @@ def test_step(model, test_loader, cost_function, device=get_device()):
             _, predicted = logits_per_image.max(dim=1)    
             cumulative_accuracy += predicted.eq(ground_truth).sum().item()
         
-    return cumulative_loss / samples, cumulative_accuracy / samples * 100
+    return cumulative_loss / samples, cumulative_accuracy / samples
 
 def get_texts(data, device = get_device()):
     text = []
@@ -219,17 +219,21 @@ def main():
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     #desc, tmp = get_texts(test_data)
     info("INIT TRAINING...")
+    tb = TensorBoard("run/exp1")
 
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
-        info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")
+        info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+        tb.log_values(epoch, loss, accuracy, "Train")
         #clip.model.convert_weights(clip_model)
     info("TESTING...")
     
-    loss, accuracy =test_step(clip_model, test_loader, cost_function)
+    loss, accuracy = test_step(clip_model, test_loader, cost_function)
+    info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    tb.log_values(epochs, loss, accuracy, "Test")
+    tb.close()
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
-    info("LOSS: "+str(loss)+" ACCURACY: "+str(accuracy)+"%")  
 
     model, optimizer, epoch, loss = load_personal_model(clip_model, optimizer, "Personal_Model")
     eval_step(model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
