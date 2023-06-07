@@ -10,6 +10,7 @@ import clip
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
 from model_utilis import save_model, load_model, TensorBoard
+import final_program
 
 
 def random_get_text(all_texts):
@@ -164,7 +165,7 @@ def get_texts(data, device = get_device()):
             clip_targets = clip.tokenize(text).squeeze().to(device)
     return text, clip_targets
 
-def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device(), transform = get_img_transform()):   
+def eval_step(clip_model, clip_processor, data, coco_desc, device = get_device()):   
     clip_threshold = 0.0005
     clip_targets = clip.tokenize(coco_desc).squeeze().to(device)
     with torch.no_grad(): #important to mantain memory free  
@@ -214,26 +215,48 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=1000, sample_size_test=100, sample_size_val=50)
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=1000, sample_size_test=100, sample_size_val=50)
 
-    #eval_step(yolo_model, clip_model, clip_processor, test_data)
-    #desc, tmp = get_texts(test_data)
+    #eval_step(yolo_model, clip_model, clip_processor, val_loader)
+    #desc, tmp = get_texts(val_loader)
+    
+    tb = TensorBoard("run")
+    
+    info("BEFORE TRAINING...")
+    loss, accuracy = test_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    tb.log_values(ep, loss, accuracy, "Train")
+    loss, accuracy = test_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    tb.log_values(ep, loss, accuracy, "Validation")
+
     info("INIT TRAINING...")
-    tb = TensorBoard("run/exp1")
     for ep in range(epochs):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
-        info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+        info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Train")
+        loss, accuracy = test_step(clip_model, val_loader, cost_function)
+        info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+        tb.log_values(ep, loss, accuracy, "Validation")
 
-    info("TESTING...")    
+    info("AFTER TRAINING...")
+    loss, accuracy = test_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    tb.log_values(ep, loss, accuracy, "Train")
+    loss, accuracy = test_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+    tb.log_values(ep, loss, accuracy, "Validation")
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
     info("LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(epochs, loss, accuracy, "Test")
     tb.close()
+
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
 
+    info("EVALUATION...")
     model, optimizer, epoch, loss = load_model(clip_model, optimizer, "Personal_Model")
-    eval_step(model, clip_processor, test_data, all_texts, device=device, tranform=get_img_transform())
+    #eval_step(model, clip_processor, val_loader, all_texts, device=device)
+    final_program.final_program(model)
 ##########################################################################################
 main()

@@ -15,8 +15,9 @@ def get_device():
         get_device_first_call=False
     return device
 
-def main():
-    clip_model = CustomClip(device=get_device())
+def final_program(clip_model=None):
+    if clip_model is None:
+        clip_model = CustomClip(device=get_device())
     _, clip_processor = clip_model.__get_model__()
     sample_size = len([p for p in Path("refcocog/images").glob('*')])
     info("Total size: "+str(sample_size))
@@ -39,5 +40,5 @@ def main():
             cv2.destroyAllWindows()
         
 if __name__ == "__main__":
-    main()
+    final_program()
     cv2.destroyAllWindows()
