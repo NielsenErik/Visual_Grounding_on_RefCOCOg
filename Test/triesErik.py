@@ -227,6 +227,7 @@ def main():
     clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=False, bias=True)
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
+    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     
     train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=100, sample_size_test=100, sample_size_val=50)
 
