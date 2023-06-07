@@ -78,8 +78,9 @@ class CustomClip(torch.nn.Module):
         self.batch_size = batch_size
         self.img_bottleneck = self.set_img_bottleneck()
         self.txt_bottleneck = self.set_txt_bottleneck()
-        self.encoder = self.model.visual.float()
+        #self.encoder = self.model.visual.float()
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        
         #self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
     
     def set_img_bottleneck(self):
@@ -168,16 +169,12 @@ class CustomClip(torch.nn.Module):
           
         return bounding_boxes[max_sim_index]
       
-      
     def forward(self, image, text):
-        debugging("Image: {}".format(image))
-        image = self.encoder(image).to(self.device)
-        image = self.img_bottleneck(image).to(self.device)
-        debugging('text: {}'.format(text))
-        debugging("Image: {} {}".format(image.shape, type(image)))
-        debugging("Text: {} {}".format(text.shape, type(text)))
-        text = text.float()
-        text = self.model.encode_text(text).to(self.device)
+        # image = self.encoder(image).to(self.device)
+        # image = self.img_bottleneck(image).to(self.device)
+        image = self.model.encode_image(image).float()
+        text = self.model.encode_text(text).float()
+
         if self.norm:
             image = self.bn1(image).to(self.device)  
             text = self.bn1(text).to(self.device)      

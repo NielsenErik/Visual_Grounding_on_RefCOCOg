@@ -117,6 +117,6 @@ class RefCOCO(Dataset):
         # the required parameter is:
         # idx: the index of the item to be returned
         image = self.enc_imgs[idx]
-        text = self.enc_txts[idx]        
+        text = self.enc_txts[idx]
         
         return image, text

@@ -147,7 +147,6 @@ def test_step(model, test_loader, cost_function, device=get_device()):
             #images, texts = batch
             images = images.to(device)
             texts = texts.squeeze(1).to(device)
-            debugging(str(texts.shape)+" "+str(images.shape))
             logits_per_image, logits_per_texts = model(images, texts)
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
             img_loss = cost_function(logits_per_image, ground_truth)
@@ -219,7 +218,9 @@ def main():
     epochs = 20
     e = math.exp(1)
     alpha = 1
+    
     visualization_name='RefCOCOg'
+
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
     all_texts = get_all_texts(annotations_file)
@@ -229,7 +230,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=100, sample_size_test=100, sample_size_val=50)
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=100, sample_size_test=50, sample_size_val=50)
 
     #eval_step(yolo_model, clip_model, clip_processor, val_loader)
     #desc, tmp = get_texts(val_loader)
@@ -246,16 +247,19 @@ def main():
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(-1, loss, accuracy, "Test")
-
+    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     info("INIT TRAINING...")
     for ep in range(epochs):
+
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
         info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Train")
         loss, accuracy = test_step(clip_model, val_loader, cost_function)
         info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-        tb.log_values(ep, loss, accuracy, "Validation")
+        tb.log_values(ep, loss, accuracy, "Validation") 
+        learning_rate, weight_decay, momentum, alpha = update_parameters(learning_rate, weight_decay, momentum, alpha)
+        optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
     info("AFTER TRAINING...")
     loss, accuracy = test_step(clip_model, train_loader, cost_function)

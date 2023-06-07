@@ -3,5 +3,5 @@ refcocog
 *.csv
 *.pt
 *.pyc
-Personal_Model
+Personal_Model/*
 runs/RefCOCOg/*
