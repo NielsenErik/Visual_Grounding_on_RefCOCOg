@@ -4,31 +4,13 @@ import torch
 from PIL import Image
 import cv2
 import torchvision.transforms as T
-from cocoLoad import RefCOCO, RefCOCO_Split #Importing REfCOCO class from cocoLoad.py
+from cocoLoad import RefCOCO #Importing REfCOCO class from cocoLoad.py
 from transformers import CLIPProcessor, CLIPModel
 import clip
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
 from model_utilis import save_model, load_personal_model
 
-def random_get_text(all_texts):
-    small_list = []
-    for i in range(1000):
-        small_list.append(all_texts[np.random.randint(0,len(all_texts))])
-    return small_list
-
-def get_all_texts(annotations_file, smallTest=False):
-    x = pd.read_pickle(annotations_file)
-    img_texts = pd.DataFrame(x)
-    all_texts = []
-    for x in img_texts.iloc():
-        if x['split']=='test' and len(x['sentences'][0]['raw'])>0:
-            all_texts.append(x['sentences'][0]['raw'])
-    info("Number of texts: " + str(len(all_texts)))
-    if smallTest:
-        all_texts = random_get_text(all_texts)
-    info("Number of random sample: " + str(len(all_texts)))
-    return all_texts
 
 def random_get_text(all_texts):
     small_list = []
@@ -86,15 +68,16 @@ def get_img_transform():
     transform = T.Compose(transform)
     return transform
 
-def get_data(batch_size, annotations_file, img_root, model, preprocess = None, device = get_device(), sample_size = 5023):
+def get_data(batch_size, annotations_file, img_root, model, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573):
 
     transform = get_img_transform()
-      
-    training_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size, batch_size=batch_size)
-    if sample_size > 5023:
-        sample_size = 5023 
-    test_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size, batch_size=batch_size)
-    eval_data = RefCOCO_Split(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', transform=transform, device=device, sample_size=int(sample_size*0.01), batch_size=batch_size)
+    
+    sample_size_train = sample_size_train if sample_size_train <= 42226 else 42226
+    sample_size_test = sample_size_test if sample_size_test <= 5023 else 5023
+    sample_size_val = sample_size_val if sample_size_val <= 2573 else 2573
+    training_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size_train, batch_size=batch_size)
+    test_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size_test, batch_size=batch_size)
+    eval_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', transform=transform, device=device, sample_size=sample_size_val, batch_size=batch_size)
 
     num_training_samples = len(training_data)
     info("Number of training samples:" + str(num_training_samples))
@@ -232,7 +215,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
-    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size=100)
+    train_loader, test_loader, test_data = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=1000, sample_size_test=100, sample_size_val=50)
 
     #eval_step(yolo_model, clip_model, clip_processor, test_data)
     #desc, tmp = get_texts(test_data)

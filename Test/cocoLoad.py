@@ -20,11 +20,11 @@ class RefCOCO(Dataset):
     # target_transform: the transformation to be applied to the labels
     # device: the device to be used (cuda or cpu)
 
-    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=5023, batch_size=None, split_type='train'):
+    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=42226, batch_size=None, split_type='train'):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
-        #self.img_texts.to_csv('Test/Data/labels_'+split_type+'.csv', index=False)
+        self.img_texts.to_csv('Test/Data/labels_'+split_type+'.csv', index=False)
         self.target_transform = target_transform
         self.device = device
         self.sample_size = sample_size
@@ -86,27 +86,3 @@ class RefCOCO(Dataset):
         text = self.enc_txts[idx]        
         
         return image, text
-
-class RefCOCO_Split(RefCOCO):
-    # This class is used to load the RefCOCO dataset, it is a subclass of Dataset.
-    # It loads the dataset and to preprocess the images and the labels and then
-    # it splits the dataset in training and test set depending on the split_type parameter.
-    # the requried parameters are:
-    # annotations_file: the path to the pickle file containing the labels (RefCOCO folder provide a pickle file called refs(umd).p)
-    # img_dir: the path to the folder containing the images (RefCOCO folder provide a subfolder called images)
-    # split_type: the type of split to be used, it can be 'train' or 'test'
-    # transform: the transformation to be applied to the images
-    # target_transform: the transformation to be applied to the labels
-    # device: the device to be used, it can be 'cuda' or 'cpu'
-    # sample_size: the size of the dataset to be loaded
-
-    def __init__(self, annotations_file, img_dir, model, preprocess, split_type = 'train', transform=None, target_transform=None, device='cuda', sample_size=5023, batch_size=None):
-        super().__init__(annotations_file, img_dir, model, preprocess, transform, target_transform, device, sample_size, batch_size, split_type)
-    def __len__(self):
-        return super().__len__()
-
-    def __getitem__(self, idx):
-        return super().__getitem__(idx)
-
-    def __getimg__(self, idx):
-        return super().__getimg__(idx)
