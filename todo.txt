@@ -1,0 +1,21 @@
+*TRAINING*
+- Train also with data augmentation (for example resize, crop, rotate, blur, grayscale images)
+- Apply batch normalization in bottleneck
+- Learning rate exponential (?)
+- Get a validation set to continue monitor during training
+- Save & Reload
+
+*EVALUATION*
+1) Localization precision:
+    - IoU: using final program, label images, predict bounding box, compute IoU
+2) Grounding accuracy:
+    - Recall: in the test step, evaluate how much TP and FN and compute recall (TP/(TP+FN))
+3) Semantic similarity:
+    - Cosine similarity: using final program, compute an average of cosine similarities
+
+
+*BRING TO COLAB*
+- program
+- descriptions and details of the solution
+- comments
+- performance
