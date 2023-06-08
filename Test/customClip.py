@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from torch import nn
 import torch.nn.functional as F
+from torch.cuda.amp import autocast
 import clip
 from PIL import Image
 from printCalls import error, warning, debugging, info
@@ -73,7 +74,7 @@ class CustomClip(torch.nn.Module):
         self.norm = norm
         if self.norm:
           self.bn1 = BatchNorm1d(self.in_features, track_running_stats=False, affine=False, momentum=0.9)
-        self.bias = bias
+        self.bias = False
         self.norm = norm
         self.batch_size = batch_size
         self.img_bottleneck = self.set_img_bottleneck()
@@ -158,6 +159,7 @@ class CustomClip(torch.nn.Module):
         cos_sim = nn.CosineSimilarity()
 
         max_sim=0
+        max_sim_index=0
         for index, img in enumerate(img_cropped):
           preprocessed_img = self.preprocess(img).unsqueeze(0).to(self.device)
           with torch.no_grad():
@@ -166,15 +168,20 @@ class CustomClip(torch.nn.Module):
           if dist>max_sim:
              max_sim=dist
              max_sim_index = index
-          
+          else:
+            continue          
         return bounding_boxes[max_sim_index]
       
     def forward(self, image, text):
-        # image = self.encoder(image).to(self.device)
-        # image = self.img_bottleneck(image).to(self.device)
-        image = self.model.encode_image(image).float()
-        text = self.model.encode_text(text).float()
-
+        #image = self.encoder(image).to(self.device)
+        
+        
+        image = self.model.encode_image(image)
+        with autocast(dtype=torch.half):
+           image = self.img_bottleneck(image).to(self.device)
+        text = self.model.encode_text(text)
+        with autocast(dtype=torch.half):
+           text = self.txt_bottleneck(text).to(self.device)
         if self.norm:
             image = self.bn1(image).to(self.device)  
             text = self.bn1(text).to(self.device)      

@@ -7,29 +7,52 @@ from printCalls import debugging, info
 from PIL import Image, ImageFilter, ImageOps
 import clip
 import random
+from torchvision import transforms
 
 class DataAugmentation():
+    
+    
     def blur(img):
-        return Image.open(img).filter(ImageFilter.BLUR)
-    def resize(img):
-        filtered = Image.open(img)
-        width, height= filtered.size
-        width = width + int((random.choice([-1, 1])) * (width *(random.random()*0.4+0.45)))
-        filtered = filtered.resize((width, height))
-        return filtered
+        transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.GaussianBlur(kernel_size=5),
+            transforms.ToTensor(),            
+        ])
+        img = transform(img)
+        return img
+    
     def rotate(img):
-        filtered = Image.open(img)
-        filtered.rotate(random.choice([90, 180, 270]), expand = 1)
-        return filtered
+        transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.RandomRotation(degrees=180),
+            transforms.ToTensor(),
+        ])
+        img = transform(img)
+        return img
     def grayscale(img):
-        return ImageOps.grayscale(Image.open(img))
+        transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.ToTensor(),
+        ])
+        img = transform(img)
+        return img
     def colorrand(img):
-        filtered = Image.open(img)
-        arr = np.array(filtered)
-        randarray=np.random.randint(-80,80, size=arr.shape)+arr
-        randarray=np.clip(randarray,0,255)
-        filtered=Image.fromarray(randarray.astype(np.uint8))
-        return filtered
+        transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.ColorJitter(brightness=0.01*random.randrange(1,50), contrast=0.01*random.randrange(1,50), saturation=0.01*random.randrange(1,50), hue=0.01*random.randrange(1,50)),
+            transforms.ToTensor(),
+        ])
+        img = transform(img)
+        return img
+    def random_crop(img):
+        transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.RandomCrop((224,224)),
+            transforms.ToTensor(),
+        ])
+        img = transform(img)
+        return img
 
 class RefCOCO(Dataset):
     # This class is used to load the RefCOCO dataset, it is a subclass of Dataset.
@@ -84,11 +107,12 @@ class RefCOCO(Dataset):
         for img in self.img:
             enc_imgs.append(self.preprocess(Image.open(img)))
             if augment_data:
-                enc_imgs.append(self.preprocess(DataAugmentation.blur(img)))
-                enc_imgs.append(self.preprocess(DataAugmentation.resize(img)))
-                enc_imgs.append(self.preprocess(DataAugmentation.rotate(img)))
-                enc_imgs.append(self.preprocess(DataAugmentation.grayscale(img)))
-                enc_imgs.append(self.preprocess(DataAugmentation.colorrand(img)))
+                tmp = self.preprocess(Image.open(img))
+                enc_imgs.append(DataAugmentation.blur(tmp))
+                enc_imgs.append(DataAugmentation.rotate(tmp))
+                enc_imgs.append(DataAugmentation.grayscale(tmp))
+                enc_imgs.append(DataAugmentation.colorrand(tmp))
+                enc_imgs.append(DataAugmentation.random_crop(tmp))
 
         enc_txts=[]
         for txt in self.description:
@@ -99,7 +123,7 @@ class RefCOCO(Dataset):
                 enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
                 enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
                 enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-
+                enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
         return enc_imgs, enc_txts
     
     

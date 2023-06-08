@@ -71,7 +71,7 @@ def get_img_transform():
     transform = T.Compose(transform)
     return transform
 
-def get_data(batch_size, annotations_file, img_root, model, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573):
+def get_data(batch_size, annotations_file, img_root, model, test_batch_size = 32, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573):
 
     transform = get_img_transform()
     
@@ -89,8 +89,8 @@ def get_data(batch_size, annotations_file, img_root, model, preprocess = None, d
     num_eval_samples = len(eval_data)
     info("Number of eval samples:" + str(num_eval_samples))
     train_loader = torch.utils.data.DataLoader(training_data, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=1, shuffle=False)
-    eval_loader = torch.utils.data.DataLoader(eval_data, batch_size=1, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=test_batch_size, shuffle=False)
+    eval_loader = torch.utils.data.DataLoader(eval_data, batch_size=test_batch_size, shuffle=False)
     return train_loader, test_loader, eval_loader
 
 def empty_token(model, device):
@@ -210,6 +210,7 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
 
 def main():
     batch_size = 16 #must be 16 due to lenght of clip_targets
+    test_batch_size = 8
     device = 'cuda:0'
     cost_function = get_cost_function()
     learning_rate = 0.001
@@ -230,7 +231,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=100, sample_size_test=50, sample_size_val=50)
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = 8, preprocess=clip_processor, sample_size_train=15000, sample_size_test=5023, sample_size_val=50)
 
     #eval_step(yolo_model, clip_model, clip_processor, val_loader)
     #desc, tmp = get_texts(val_loader)
