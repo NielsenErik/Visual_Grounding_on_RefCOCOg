@@ -8,7 +8,7 @@ def save_model(model, epoch, optimizer, total_loss, path):
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         'loss': total_loss,
-        }, path+"/personal_model.pt")
+        }, path+"/personal_model_"+str(epoch)+".pt")
 
 def load_model(model, optimizer, path):
     checkpoint = torch.load(path+"/personal_model.pt")
