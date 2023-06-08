@@ -58,7 +58,19 @@ def get_cost_function(isImg=True):
 # SmoothL1Loss()
 
 def get_optimizer(net, lr, wd, momentum):
-    return torch.optim.SGD(net.parameters(), lr=lr, weight_decay=wd, momentum=momentum)
+    return torch.optim.Adadelta(net.parameters(), lr=lr, weight_decay = wd)
+    #return torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay = wd)
+
+# NO Adam
+# OK ASGD run 10
+# OK SGD run 11 Best
+# NO RMSprop run 12
+# No Nadam run 13
+# No LBFGS run 14
+# OK Adadelta run 15 seem GOOOODDD
+# OK SGD Big Data run 16
+# OK Adadelta Big Data run 17
+
 
 def get_img_transform():
     transform = list()
@@ -71,7 +83,7 @@ def get_img_transform():
     transform = T.Compose(transform)
     return transform
 
-def get_data(batch_size, annotations_file, img_root, model, test_batch_size = 32, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573):
+def get_data(batch_size, annotations_file, img_root, model, test_batch_size = 16, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573):
 
     transform = get_img_transform()
     
@@ -79,8 +91,8 @@ def get_data(batch_size, annotations_file, img_root, model, test_batch_size = 32
     sample_size_test = sample_size_test if sample_size_test <= 5023 else 5023
     sample_size_val = sample_size_val if sample_size_val <= 2573 else 2573
     training_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', transform=transform, device=device, sample_size=sample_size_train, batch_size=batch_size, augment_data=True)
-    test_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size_test, batch_size=batch_size)
-    eval_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', transform=transform, device=device, sample_size=sample_size_val, batch_size=batch_size)
+    test_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', transform=transform, device=device, sample_size=sample_size_test, batch_size=test_batch_size)
+    eval_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', transform=transform, device=device, sample_size=sample_size_val, batch_size=test_batch_size)
 
     num_training_samples = len(training_data)
     info("Number of training samples:" + str(num_training_samples))
@@ -225,7 +237,9 @@ def main():
     learning_rate = 0.001
     weight_decay = 0.000001
     momentum = 0.9
-    epochs = 80
+
+    epochs = 20
+
     e = math.exp(1)
     alpha = 1
     
@@ -239,8 +253,9 @@ def main():
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
-    
+
     train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val)
+
     
     tb = TensorBoard("run")
     
