@@ -124,12 +124,18 @@ class RefCOCO(Dataset):
             if augment_data:
                 tmp = self.preprocess(Image.open(img))
                 enc_imgs.append(DataAugmentation.random_augmentation(tmp))
+                # enc_imgs.append(DataAugmentation.random_augmentation(tmp))
+                # enc_imgs.append(DataAugmentation.random_augmentation(tmp))
+                # enc_imgs.append(DataAugmentation.random_augmentation(tmp))
 
         enc_txts=[]
         for txt in self.description:
             enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
             if augment_data:
                 enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
+                # enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
+                # enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
+                # enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
         return enc_imgs, enc_txts
     
     
