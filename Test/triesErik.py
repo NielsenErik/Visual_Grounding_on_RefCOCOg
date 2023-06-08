@@ -209,14 +209,23 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
     return learning_rate, weight_decay, momentum, alpha
 
 def main():
+
+    #DATASET PARAMS
+    sample_size_train=15008
+    sample_size_test=5016
+    sample_size_val=80
+
+    #TRAINING PARAMS
     batch_size = 16 #must be 16 due to lenght of clip_targets
     test_batch_size = 8
-    device = 'cuda:0'
+    device = get_device()
+    
+    #OPTIMIZER & LOSS PARAMS
     cost_function = get_cost_function()
     learning_rate = 0.001
     weight_decay = 0.000001
     momentum = 0.9
-    epochs = 100
+    epochs = 80
     e = math.exp(1)
     alpha = 1
     
@@ -231,10 +240,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=8500, sample_size_test=5023, sample_size_val=50)
-
-    #eval_step(yolo_model, clip_model, clip_processor, val_loader)
-    #desc, tmp = get_texts(val_loader)
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val)
     
     tb = TensorBoard("run")
     
@@ -249,6 +255,7 @@ def main():
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(-1, loss, accuracy, "Test")
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
+
     info("INIT TRAINING...")
     for ep in range(epochs):
 
