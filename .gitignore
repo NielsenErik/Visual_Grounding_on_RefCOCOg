@@ -4,4 +4,3 @@ refcocog
 *.pt
 *.pyc
 Personal_Model/*.pt
-runs/RefCOCOg/*

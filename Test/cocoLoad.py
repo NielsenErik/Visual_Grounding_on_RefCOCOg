@@ -53,6 +53,19 @@ class DataAugmentation():
         ])
         img = transform(img)
         return img
+        
+    def random_augmentation(img):
+        n = random.randint(0, 5)
+        if n == 0:
+            return DataAugmentation.blur(img)
+        elif n == 1:
+            return DataAugmentation.rotate(img)
+        elif n == 2:
+            return DataAugmentation.grayscale(img)
+        elif n == 3:
+            return DataAugmentation.colorrand(img)
+        else:
+            return DataAugmentation.random_crop(img)
 
 class RefCOCO(Dataset):
     # This class is used to load the RefCOCO dataset, it is a subclass of Dataset.
@@ -102,27 +115,20 @@ class RefCOCO(Dataset):
         return images, texts
     
     
+
+    
     def encode_data(self, augment_data):
         enc_imgs=[]
         for img in self.img:
             enc_imgs.append(self.preprocess(Image.open(img)))
             if augment_data:
                 tmp = self.preprocess(Image.open(img))
-                enc_imgs.append(DataAugmentation.blur(tmp))
-                enc_imgs.append(DataAugmentation.rotate(tmp))
-                enc_imgs.append(DataAugmentation.grayscale(tmp))
-                enc_imgs.append(DataAugmentation.colorrand(tmp))
-                enc_imgs.append(DataAugmentation.random_crop(tmp))
+                enc_imgs.append(DataAugmentation.random_augmentation(tmp))
 
         enc_txts=[]
         for txt in self.description:
             enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
             if augment_data:
-                enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
                 enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
         return enc_imgs, enc_txts
     

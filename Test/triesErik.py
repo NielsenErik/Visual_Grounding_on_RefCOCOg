@@ -231,7 +231,7 @@ def main():
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
     
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = 8, preprocess=clip_processor, sample_size_train=15000, sample_size_test=5023, sample_size_val=50)
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = 8, preprocess=clip_processor, sample_size_train=5000, sample_size_test=5023, sample_size_val=50)
 
     #eval_step(yolo_model, clip_model, clip_processor, val_loader)
     #desc, tmp = get_texts(val_loader)
