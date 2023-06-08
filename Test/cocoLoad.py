@@ -1,18 +1,17 @@
 import pandas as pd
-import numpy as np
-import torch
 from torch.utils.data import Dataset
 from pathlib import Path
-from printCalls import debugging, info
-from PIL import Image, ImageFilter, ImageOps
+from printCalls import info
+from PIL import Image
 import clip
 import random
 from torchvision import transforms
 
 class DataAugmentation():
-    
+    # This class is used to perform tranformation in order to have augmented data   
     
     def blur(img):
+        # Gaussian Blur the image
         transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.GaussianBlur(kernel_size=5),
@@ -22,6 +21,7 @@ class DataAugmentation():
         return img
     
     def rotate(img):
+        # Rotate the image
         transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.RandomRotation(degrees=180),
@@ -30,6 +30,7 @@ class DataAugmentation():
         img = transform(img)
         return img
     def grayscale(img):
+        # Convert the image to grayscale
         transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
@@ -38,6 +39,7 @@ class DataAugmentation():
         img = transform(img)
         return img
     def colorrand(img):
+        # Randomly change the color of the image
         transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.ColorJitter(brightness=0.01*random.randrange(1,50), contrast=0.01*random.randrange(1,50), saturation=0.01*random.randrange(1,50), hue=0.01*random.randrange(1,50)),
@@ -46,6 +48,7 @@ class DataAugmentation():
         img = transform(img)
         return img
     def random_crop(img):
+        # Randomly crop the image
         transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.RandomCrop((224,224)),
@@ -55,6 +58,7 @@ class DataAugmentation():
         return img
         
     def random_augmentation(img):
+        # Randomly choose a transformation to be applied to the image
         n = random.randint(0, 5)
         if n == 0:
             return DataAugmentation.blur(img)
@@ -78,12 +82,15 @@ class RefCOCO(Dataset):
     # transform: the transformation to be applied to the images
     # target_transform: the transformation to be applied to the labels
     # device: the device to be used (cuda or cpu)
+    # sample_size: the number of samples to be loaded in the dataset
+    # batch_size: the batch size when __get_item__ is called
+    # split_type: the split to be loaded (train, val, test)
+    # augment_data: if True, the data is augmented with random transformations
 
     def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=42226, batch_size=None, split_type='train', augment_data=False):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
-        #self.img_texts.to_csv('Test/Data/labels_'+split_type+'.csv', index=False)
         self.target_transform = target_transform
         self.device = device
         self.sample_size = sample_size
@@ -100,6 +107,8 @@ class RefCOCO(Dataset):
         return len(self.enc_imgs)
 
     def get_imgs_texts(self):
+        # This function is used to get the images and the labels (descriptions) from the dataset
+        # It returns a list of images and a list of list of sentences ordered (idx image = idx text)
         images=[]
         texts=[]
         index=0
@@ -114,37 +123,43 @@ class RefCOCO(Dataset):
                 break
         return images, texts
     
-    
-
-    
     def encode_data(self, augment_data):
+        # This function is used to encode data. It executes:
+        # - Tokenization for text
+        # - Preprocessing for images
+        # - Randomly data augmentation if requested (1 original img = 1 noisy img)
+        # the required parameter is:
+        # augment_data: boolean that enable data augmentation
         enc_imgs=[]
         for img in self.img:
             enc_imgs.append(self.preprocess(Image.open(img)))
             if augment_data:
                 tmp = self.preprocess(Image.open(img))
                 enc_imgs.append(DataAugmentation.random_augmentation(tmp))
-                # enc_imgs.append(DataAugmentation.random_augmentation(tmp))
-                # enc_imgs.append(DataAugmentation.random_augmentation(tmp))
-                # enc_imgs.append(DataAugmentation.random_augmentation(tmp))
 
         enc_txts=[]
         for txt in self.description:
             enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
             if augment_data:
                 enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                # enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                # enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
-                # enc_txts.append(clip.tokenize(txt[random.randint(0, len(txt)-1)]).to(self.device))
+
         return enc_imgs, enc_txts
     
     
     def __getimg__(self, idx):
+        # This function is used to get image path and image name at index idx
+        # Used only for evaluation purposes
+        # the required parameter is:
+        # idx: the index of the item to be returned
         image = self.img[idx]
         str_image = str(image)
         return image, str_image
     
     def __gettext__(self, idx):
+        # This function is used to get list of descriptions at index idx
+        # Used only for evaluation purposes
+        # the required parameter is:
+        # idx: the index of the item to be returned
         text = self.description[idx]
         return text
     
