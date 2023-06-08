@@ -152,25 +152,20 @@ class CustomClip(torch.nn.Module):
         if(len(img_cropped)==0):
            return None
 
-        tokenized_text = clip.tokenize([input_text]).to(self.device)
         with torch.no_grad():
-          input_clip_txt = self.model.encode_text(tokenized_text).float()
+          tokenized_text = clip.tokenize([input_text]).squeeze(1).to(self.device)
 
-        cos_sim = nn.CosineSimilarity()
+          preprocessed_imgs=[]
+          for index, img in enumerate(img_cropped):
+            preprocessed_imgs.append(self.preprocess(img).to(self.device))
 
-        max_sim=0
-        max_sim_index=0
-        for index, img in enumerate(img_cropped):
-          preprocessed_img = self.preprocess(img).unsqueeze(0).to(self.device)
-          with torch.no_grad():
-            input_clip_img = self.model.encode_image(preprocessed_img).float()
-          dist = cos_sim(input_clip_img, input_clip_txt).item()
-          if dist>max_sim:
-             max_sim=dist
-             max_sim_index = index
-          else:
-            continue          
-        return bounding_boxes[max_sim_index]
+          preprocessed_imgs = torch.stack(preprocessed_imgs)
+          self.model.float()
+          _, logits_per_text = self.model(preprocessed_imgs, tokenized_text)
+          probs = logits_per_text.softmax(dim=1)
+          top_prob, top_label = probs.topk(1, dim=-1)
+
+        return bounding_boxes[top_label.item()], top_prob.item()
       
     def forward(self, image, text):
         #image = self.encoder(image).to(self.device)

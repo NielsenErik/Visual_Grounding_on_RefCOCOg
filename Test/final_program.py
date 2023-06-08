@@ -19,7 +19,7 @@ def final_program(clip_model=None):
     if clip_model is None:
         clip_model = CustomClip(device=get_device())
     _, clip_processor = clip_model.__get_model__()
-    sample_size = len([p for p in Path("refcocog/images").glob('*')])
+    sample_size = 100#len([p for p in Path("refcocog/images").glob('*')])
     info("Total size: "+str(sample_size))
     test_data = RefCOCO(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog/images", model=clip_model, preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size, batch_size=1)
 
@@ -28,12 +28,12 @@ def final_program(clip_model=None):
         index = random.randint(0, test_data.__len__())
         _, image = test_data.__getimg__(index)
         textual_desc = random.choice(test_data.__gettext__(index))
-        info("{:05d}: {} --> {}".format(index, image, textual_desc))
 
         img = cv2.imread(image)
-        item = clip_model.__get_boxes_v2__(image, textual_desc)
+        item, prob = clip_model.__get_boxes_v2__(image, textual_desc)
         if item is not None:
             cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 3)
+            info("{:05d}: {} --> {}\n\033[92m{:2.1%}\033[0m".format(index, image, textual_desc, prob))
             cv2.imshow("Result boxes", img)
             if cv2.waitKey(0) == 27: #if you press ESC button, you will exit the program
                 return
