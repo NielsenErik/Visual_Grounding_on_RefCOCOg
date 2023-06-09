@@ -14,8 +14,7 @@ def save_model(model, epoch, optimizer, total_loss, path):
 def load_model(model, path):
 
     checkpoint = torch.load(path)
-
-    model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+    model.load_state_dict(checkpoint['model_state_dict'])
     epoch = checkpoint['epoch'] 
     loss = checkpoint['loss']
     return model, epoch, loss
