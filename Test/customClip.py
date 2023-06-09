@@ -158,7 +158,6 @@ class CustomClip(torch.nn.Module):
           preprocessed_imgs=[]
           for index, img in enumerate(img_cropped):
             preprocessed_imgs.append(self.preprocess(img).to(self.device))
-
           preprocessed_imgs = torch.stack(preprocessed_imgs)
           self.model.float()
           _, logits_per_text = self.model(preprocessed_imgs, tokenized_text)
@@ -168,15 +167,14 @@ class CustomClip(torch.nn.Module):
         return bounding_boxes[top_label.item()], top_prob.item()
       
     def forward(self, image, text):
-        #image = self.encoder(image).to(self.device)
-        
-        
+        #image = self.encoder(image).to(self.device)       
         image = self.model.encode_image(image)
         with autocast(dtype=torch.half):
            image = self.img_bottleneck(image).to(self.device)
         text = self.model.encode_text(text)
         with autocast(dtype=torch.half):
            text = self.txt_bottleneck(text).to(self.device)
+
         if self.norm:
             image = self.bn1(image).to(self.device)  
             text = self.bn1(text).to(self.device)      

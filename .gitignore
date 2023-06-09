@@ -3,4 +3,9 @@ refcocog
 *.csv
 *.pt
 *.pyc
+<<<<<<< HEAD
 Personal_Model/*.pt
+=======
+Personal_Model/*
+runs/RefCOCOg/*
+>>>>>>> 8b23d45 (removed momentanery bottleneck)
