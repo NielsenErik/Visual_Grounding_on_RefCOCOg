@@ -4,15 +4,17 @@ import torch
 from PIL import Image
 import cv2
 import torchvision.transforms as T
-from cocoLoad import RefCOCO #Importing REfCOCO class from cocoLoad.py
 from transformers import CLIPProcessor, CLIPModel
 import clip
+import math
+
+#Custom modules
+from cocoLoad import RefCOCO #Importing REfCOCO class from cocoLoad.py
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
 from model_utilis import save_model, load_model, TensorBoard
 import final_program
-import math
-from torch.utils.tensorboard import SummaryWriter
+from evaluation_metrics import recall, intersection_over_union, semantic_similarity
 
 
 def random_get_text(all_texts):
@@ -151,6 +153,7 @@ def test_step(model, test_loader, cost_function, device=get_device()):
     samples = 0.0
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
+    comulative_recall = 0.0
     model.eval() 
     # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
     with torch.no_grad():
@@ -159,7 +162,6 @@ def test_step(model, test_loader, cost_function, device=get_device()):
             #images, texts = batch
             images = images.to(device)
             texts = texts.squeeze(1).to(device)
-            debugging(str(texts.shape)+" "+str(images.shape))
             logits_per_image, logits_per_texts = model(images, texts)
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
             img_loss = cost_function(logits_per_image, ground_truth)
@@ -168,10 +170,13 @@ def test_step(model, test_loader, cost_function, device=get_device()):
             #debugging(str(loss.item()))
             cumulative_loss += loss.item() 
             samples += images.shape[0]  
-            _, predicted = logits_per_image.max(dim=1)    
+            n_labels = logits_per_texts.shape[1]
+            _, predicted = logits_per_image.max(dim=1)
             cumulative_accuracy += predicted.eq(ground_truth).sum().item()
+            comulative_recall += recall(predicted, ground_truth, n_labels, device)
+
         
-    return cumulative_loss / samples, cumulative_accuracy / samples
+    return cumulative_loss / samples, cumulative_accuracy / samples, comulative_recall / samples
 
 def get_texts(data, device = get_device()):
     text = []
@@ -263,15 +268,15 @@ def main():
     tb = TensorBoard("run")
     
     info("BEFORE TRAINING...")
-    loss, accuracy = test_step(clip_model, train_loader, cost_function)
-    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(0, loss, accuracy, "Train")
-    loss, accuracy = test_step(clip_model, val_loader, cost_function)
-    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(0, loss, accuracy, "Validation")
-    loss, accuracy = test_step(clip_model, test_loader, cost_function)
-    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(0, loss, accuracy, "Test")
+    loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    tb.log_values(epochs+1, loss, accuracy, recall, "Train")
+    loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    tb.log_values(epochs+1, loss, accuracy, recall, "Validation")
+    loss, accuracy, recall = test_step(clip_model, test_loader, cost_function)
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    tb.log_values(epochs+1, loss, accuracy, recall, "Test")
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)    
 
     info("INIT TRAINING...")
@@ -280,24 +285,24 @@ def main():
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
         if ep % 5 == 0:
             save_model(clip_model, ep, optimizer, loss, "Personal_Model")
-        info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
+        info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% ".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Train")
-        loss, accuracy = test_step(clip_model, val_loader, cost_function)
+        loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
         info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Validation") 
         learning_rate, weight_decay, momentum, alpha = update_parameters(learning_rate, weight_decay, momentum, alpha)
         optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
     info("AFTER TRAINING...")
-    loss, accuracy = test_step(clip_model, train_loader, cost_function)
-    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(epochs+1, loss, accuracy, "Train")
-    loss, accuracy = test_step(clip_model, val_loader, cost_function)
-    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(epochs+1, loss, accuracy, "Validation")
-    loss, accuracy = test_step(clip_model, test_loader, cost_function)
-    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-    tb.log_values(epochs+1, loss, accuracy, "Test")
+    loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    tb.log_values(epochs+1, loss, accuracy, recall, "Train")
+    loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    tb.log_values(epochs+1, loss, accuracy, recall, "Validation")
+    loss, accuracy, recall = test_step(clip_model, test_loader, cost_function)
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    tb.log_values(epochs+1, loss, accuracy, recall, "Test")
     tb.close()
 
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
