@@ -21,7 +21,7 @@ def final_program(clip_model=None):
     _, clip_processor = clip_model.__get_model__()
     sample_size = 100#len([p for p in Path("refcocog/images").glob('*')])
     info("Total size: "+str(sample_size))
-    test_data = RefCOCO(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog/images", model=clip_model, preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size, batch_size=1)
+    test_data = RefCOCO(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog/images", preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size)
 
     for i in range(100):
         #filename = random.choice(list_of_img)
