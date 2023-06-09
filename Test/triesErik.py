@@ -287,9 +287,6 @@ def main():
         tb.log_values(ep, loss, accuracy, "Validation") 
         learning_rate, weight_decay, momentum, alpha = update_parameters(learning_rate, weight_decay, momentum, alpha)
         optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
-        tb.log_values(ep, loss, accuracy, "Validation") 
-        learning_rate, weight_decay, momentum, alpha = update_parameters(learning_rate, weight_decay, momentum, alpha)
-        optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
 
     info("AFTER TRAINING...")
     loss, accuracy = test_step(clip_model, train_loader, cost_function)
