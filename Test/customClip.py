@@ -64,6 +64,7 @@ class BatchNorm1d(torch.nn.Module):
 
 class CustomClip(torch.nn.Module):
     def __init__(self, device, custom_model_path=None, batch_size=128, norm=True, bias=True):
+
         super().__init__()
         self.device = device
         self.model, self.preprocess = clip.load('RN50', device=self.device, jit=False)

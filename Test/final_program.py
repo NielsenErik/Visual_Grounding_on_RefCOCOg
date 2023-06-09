@@ -6,6 +6,8 @@ from printCalls import info, debugging, error, warning
 from cocoLoad import RefCOCO
 from model_utilis import TensorBoard, save_model, load_model, putTextBg
 
+
+
 get_device_first_call=True
 def get_device():
     global get_device_first_call

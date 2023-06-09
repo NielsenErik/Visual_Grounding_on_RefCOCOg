@@ -6,6 +6,7 @@ from torchvision.ops import box_iou
 from printCalls import info
 from customClip import CustomClip
 from cocoLoad import RefCOCO
+from model_utilis import TensorBoard, save_model, load_model, putTextBg
 
 get_device_first_call=True
 def get_device():
@@ -57,7 +58,8 @@ def cosine_similarity(custom_model, imgs, texts):
 
 def eval_step(model, eval_loader, device = get_device()):
     samples = 0.0
-    cumulative_recall = 0.0
+    cumulative_accuracy = 0.0
+    comulative_recall = 0.0
     cumulative_sim = 0.0
     cumulative_accuracy = 0.0
     model.eval() 
@@ -80,9 +82,10 @@ def eval_step(model, eval_loader, device = get_device()):
     return cumulative_accuracy / samples, cumulative_recall / samples, cumulative_sim / samples
 
 
-clip_model = CustomClip(device=get_device(), custom_model_path="Personal_Model/personal_model.pt")
-_, preprocess = clip_model.__get_model__()
-test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=5000)
+clip_model_ = CustomClip(device=get_device())
+_, preprocess = clip_model_.__get_model__()
+clip_model, epoch, loss = load_model(clip_model_, "Personal_Model/Model2.pt") #QUI METTERE IL MODELLO DA TESTARE
+test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=4000)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=False)
 
 # Evaluate recall (grounding accuracy metric) and cosine similarity (semantic similarity metric)
