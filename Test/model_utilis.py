@@ -1,5 +1,6 @@
 import torch
 import os
+import cv2
 from torch.utils.tensorboard import SummaryWriter
 
 def save_model(model, epoch, optimizer, total_loss, path):
@@ -36,3 +37,10 @@ class TensorBoard():
         self.writer.add_scalar(f"{prefix}/accuracy", accuracy, step)
     def close(self):
         self.writer.close()
+
+def putTextBg(img, text, org, font, size, fg_color, thickness, linetype, bg_color):
+    text_size, _ = cv2.getTextSize(text, font, size, thickness)
+    text_w, text_h = text_size
+    img = cv2.rectangle(img, (org[0]-2, org[1]-text_h-2), (org[0] + text_w + 2, org[1] + 5), bg_color, -1)
+    img = cv2.putText (img, text, org, font, size, fg_color, thickness, linetype)
+    return img
