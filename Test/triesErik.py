@@ -177,8 +177,6 @@ def main():
 
     train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val, augment_data_train=augment_data_train)
 
-    #eval_step(yolo_model, clip_model, clip_processor, val_loader)
-    #desc, tmp = get_texts(val_loader)
     
     tb = TensorBoard("run")
     
