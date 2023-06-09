@@ -57,8 +57,9 @@ def cosine_similarity(custom_model, imgs, texts):
 
 def eval_step(model, eval_loader, device = get_device()):
     samples = 0.0
-    comulative_recall = 0.0
+    cumulative_recall = 0.0
     cumulative_sim = 0.0
+    cumulative_accuracy = 0.0
     model.eval() 
     # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
     with torch.no_grad():
@@ -71,11 +72,12 @@ def eval_step(model, eval_loader, device = get_device()):
             samples += images.shape[0]  
             n_labels = logits_per_texts.shape[1]
             _, predicted = logits_per_image.max(dim=1)
-            comulative_recall += recall(predicted, ground_truth, n_labels, device)
+            cumulative_recall += recall(predicted, ground_truth, n_labels, device)
+            cumulative_accuracy += predicted.eq(ground_truth).sum().item()
             cos_sim = cosine_similarity(model, images, texts)
             cumulative_sim += torch.sum(cos_sim).item()
 
-    return comulative_recall / samples, cumulative_sim / samples
+    return cumulative_accuracy / samples, cumulative_recall / samples, cumulative_sim / samples
 
 
 clip_model = CustomClip(device=get_device(), custom_model_path="Personal_Model/personal_model.pt")
@@ -85,8 +87,8 @@ test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=Fals
 
 # Evaluate recall (grounding accuracy metric) and cosine similarity (semantic similarity metric)
 info("EVALUATING...")
-rec, sim = eval_step(clip_model, test_loader)
-info("RECALL: {:2.1%} SIMILARITY: {:.4}".format(rec, sim))
+acc, rec, sim = eval_step(clip_model, test_loader)
+info("ACCURACY: {:2.1%} RECALL: {:2.1%} SIMILARITY: {:.4}".format(acc, rec, sim))
 
 
 # Evaluate IoU (localization accuracy metric)
