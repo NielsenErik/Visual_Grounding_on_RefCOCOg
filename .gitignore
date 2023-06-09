@@ -4,3 +4,4 @@ refcocog
 *.pt
 *.pyc
 Personal_Model/*.pt
+Test/__pycache__
