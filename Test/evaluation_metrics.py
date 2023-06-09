@@ -84,8 +84,9 @@ test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_d
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=False)
 
 # Evaluate recall (grounding accuracy metric) and cosine similarity (semantic similarity metric)
+info("EVALUATING...")
 rec, sim = eval_step(clip_model, test_loader)
-info("RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(rec, sim))
+info("RECALL: {:2.1%} SIMILARITY: {:.4}".format(rec, sim))
 
 
 # Evaluate IoU (localization accuracy metric)
