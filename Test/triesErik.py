@@ -231,7 +231,6 @@ def main():
     #TRAINING PARAMS
     batch_size = 512 #must be 16 due to lenght of clip_targets
     test_batch_size = 64
-    device = get_device()
     
     #OPTIMIZER & LOSS PARAMS
     cost_function = get_cost_function()
