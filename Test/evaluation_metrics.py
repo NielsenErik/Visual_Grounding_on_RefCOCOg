@@ -40,18 +40,18 @@ def intersection_over_union(preds, target):
     value = box_iou(preds, target)
     return value.item()
 
-def cosine_similarity(custom_model, imgs, texts):
+def cosine_similarity(clip_model, imgs, texts):
     # Semantic similarity is a metric defined over a set of documents or terms,
     # where the idea of distance between them is based on the likeness of their meaning or semantic content
     # Parameters:
     # custom_model (torch.nn.Module): custom model
     # img (string): Image
     # text (string): Description
-    clip_model, _ = custom_model.__get_model__()
+    #clip_model, _ = custom_model.__get_model__()
+    
     clip_model.float()
     with torch.no_grad():
-        enc_texts = clip_model.encode_text(texts).float()
-        enc_imgs = clip_model.encode_image(imgs).float()
+        enc_imgs, enc_texts = clip_model(imgs, texts)
     cos_sim = torch.nn.CosineSimilarity()
     similarity = cos_sim(enc_imgs, enc_texts)
     return similarity
