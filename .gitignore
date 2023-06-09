@@ -3,10 +3,7 @@ refcocog
 *.csv
 *.pt
 *.pyc
-<<<<<<< HEAD
 Test/__pycache__
-=======
->>>>>>> 8b23d45 (removed momentanery bottleneck)
 Personal_Model/*
 runs/RefCOCOg/*
 run/
