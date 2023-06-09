@@ -116,9 +116,9 @@ def test_step(model, test_loader, cost_function, device=get_device()):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=20000
-    sample_size_test=5000
-    sample_size_val=2560
+    sample_size_train=200
+    sample_size_test=50
+    sample_size_val=25
     augment_data_train=True
 
     #TRAINING PARAMS
@@ -135,7 +135,7 @@ def main():
 
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
-    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=False, bias=True)
+    clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True, bias=False)
     _ , clip_processor = clip_model.__get_model__()
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay)
 

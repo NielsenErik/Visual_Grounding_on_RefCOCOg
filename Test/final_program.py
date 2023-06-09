@@ -4,6 +4,7 @@ import cv2
 import random
 from printCalls import info, debugging, error, warning
 from cocoLoad import RefCOCO
+from model_utilis import TensorBoard, save_model, load_model
 
 get_device_first_call=True
 def get_device():
@@ -39,5 +40,7 @@ def final_program(clip_model=None):
             cv2.destroyAllWindows()
         
 if __name__ == "__main__":
-    final_program()
+    clip_model = CustomClip(device=get_device())
+    clip_model, epoch, loss = load_model(clip_model, "Personal_Model/Model2.pt")
+    final_program(clip_model)
     cv2.destroyAllWindows()
