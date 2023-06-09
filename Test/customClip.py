@@ -6,6 +6,7 @@ from torch.cuda.amp import autocast
 import clip
 from PIL import Image
 from printCalls import error, warning, debugging, info
+from model_utilis import load_model
 
 #https://github.com/openai/CLIP/issues/83
 
@@ -63,11 +64,12 @@ class BatchNorm1d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
-    def __init__(self, device, batch_size=128, norm=True, bias=True):
+    def __init__(self, device, custom_model_path=None, batch_size=128, norm=True, bias=True):
         super().__init__()
         self.device = device
-        model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
-        self.model = model
+        self.model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
+        if custom_model_path is not None:
+           self.model = load_model(self.model, custom_model_path)
         self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
         self.in_features = 1024
         self.out_features = 1024
@@ -79,10 +81,7 @@ class CustomClip(torch.nn.Module):
         self.batch_size = batch_size
         self.img_bottleneck = self.set_img_bottleneck()
         self.txt_bottleneck = self.set_txt_bottleneck()
-        #self.encoder = self.model.visual.float()
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
-        
-        #self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
     
     def set_img_bottleneck(self):
         layer = [
