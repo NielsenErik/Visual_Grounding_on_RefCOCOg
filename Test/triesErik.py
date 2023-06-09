@@ -235,16 +235,16 @@ def main():
     augment_data_train=False
 
     #TRAINING PARAMS
-    batch_size = 128 #must be 16 due to lenght of clip_targets
+    batch_size = 32 #must be 16 due to lenght of clip_targets
     test_batch_size = 64
     
     #OPTIMIZER & LOSS PARAMS
     cost_function = get_cost_function()
-    learning_rate = 0.002
+    learning_rate = 0.0015
     weight_decay = 0.000001
     momentum = 0.9
 
-    epochs = 20
+    epochs = 30
 
     e = math.exp(1)
     alpha = 1
@@ -306,11 +306,6 @@ def main():
     tb.close()
 
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
-
-    info("EVALUATION...")
-    model, optimizer, epoch, loss = load_model(clip_model, optimizer, "Personal_Model")
-    #eval_step(model, clip_processor, val_loader, all_texts, device=device)
-    final_program.final_program(model)
 
 ##########################################################################################
 main()
