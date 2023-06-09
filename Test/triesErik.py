@@ -12,9 +12,7 @@ import math
 from cocoLoad import RefCOCO #Importing REfCOCO class from cocoLoad.py
 from printCalls import error, warning, debugging, info 
 from customClip import CustomClip
-from model_utilis import save_model, load_model, TensorBoard
-import final_program
-from evaluation_metrics import recall, intersection_over_union, semantic_similarity
+from model_utilis import save_model, TensorBoard
 
 
 get_device_first_call=True
@@ -57,9 +55,9 @@ def get_data(batch_size, annotations_file, img_root, model, test_batch_size = 16
     sample_size_train = sample_size_train if sample_size_train <= 42226 else 42226
     sample_size_test = sample_size_test if sample_size_test <= 5023 else 5023
     sample_size_val = sample_size_val if sample_size_val <= 2573 else 2573
-    training_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='train', device=device, sample_size=sample_size_train, batch_size=batch_size, augment_data=augment_data_train)
-    test_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='test', device=device, sample_size=sample_size_test, batch_size=test_batch_size)
-    eval_data = RefCOCO(annotations_file = annotations_file, img_dir=img_root, model = model, preprocess = preprocess, split_type='val', device=device, sample_size=sample_size_val, batch_size=test_batch_size)
+    training_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='train', device=device, sample_size=sample_size_train, augment_data=augment_data_train)
+    test_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='test', device=device, sample_size=sample_size_test)
+    eval_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='val', device=device, sample_size=sample_size_val)
 
     num_training_samples = len(training_data)
     info("Number of training samples:" + str(num_training_samples))
@@ -122,36 +120,6 @@ def test_step(model, test_loader, cost_function, device=get_device()):
     return cumulative_loss / samples, cumulative_accuracy / samples
 
 
-def eval_step(model, eval_loader, cost_function, device=get_device()):
-    samples = 0.0
-    cumulative_loss = 0.0
-    cumulative_accuracy = 0.0
-    comulative_recall = 0.0
-    cumulative_sim = 0.0
-    model.eval() 
-    # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
-    with torch.no_grad():
-        # iterate over the set
-        for (images, texts) in eval_loader:
-            images = images.to(device)
-            texts = texts.squeeze(1).to(device)
-            logits_per_image, logits_per_texts = model(images, texts)
-            ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
-            img_loss = cost_function(logits_per_image, ground_truth)
-            desc_loss = cost_function(logits_per_texts, ground_truth)
-            loss = (img_loss + desc_loss)/2
-            cumulative_loss += loss.item() 
-            samples += images.shape[0]  
-            n_labels = logits_per_texts.shape[1]
-            _, predicted = logits_per_image.max(dim=1)
-            cumulative_accuracy += predicted.eq(ground_truth).sum().item()
-            comulative_recall += recall(predicted, ground_truth, n_labels, device)
-            cos_sim = semantic_similarity(model, images, texts)
-            cumulative_sim += torch.sum(cos_sim).item()
-
-    return cumulative_loss / samples, cumulative_accuracy / samples, comulative_recall / samples, cumulative_sim / samples
-
-
 def main():
 
     #DATASET PARAMS
@@ -184,16 +152,15 @@ def main():
     tb = TensorBoard("run")
     
     info("BEFORE TRAINING...")
-
     loss, accuracy = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
-    tb.log_values(epochs+1, loss, accuracy, "Train")
+    tb.log_values(0, loss, accuracy, "Train")
     loss, accuracy = test_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
-    tb.log_values(epochs+1, loss, accuracy, "Validation")
+    tb.log_values(0, loss, accuracy, "Validation")
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
-    tb.log_values(epochs+1, loss, accuracy, "Test")
+    tb.log_values(0, loss, accuracy, "Test")
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay)    
 
     info("INIT TRAINING...")
@@ -211,14 +178,14 @@ def main():
         optimizer = get_optimizer(clip_model, learning_rate, weight_decay)
 
     info("AFTER TRAINING...")
-    loss, accuracy, recall, similarity = eval_step(clip_model, train_loader, cost_function)
-    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(loss, accuracy, recall, similarity))
+    loss, accuracy = test_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
     tb.log_values(epochs+1, loss, accuracy, "Train")
-    loss, accuracy, recall, similarity = eval_step(clip_model, val_loader, cost_function)
-    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(loss, accuracy, recall, similarity))
+    loss, accuracy = test_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
     tb.log_values(epochs+1, loss, accuracy, "Validation")
-    loss, accuracy, recall, similarity = eval_step(clip_model, test_loader, cost_function)
-    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(loss, accuracy, recall, similarity))
+    loss, accuracy = test_step(clip_model, test_loader, cost_function)
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
     tb.log_values(epochs+1, loss, accuracy, "Test")
     tb.close()
 

@@ -87,18 +87,14 @@ class RefCOCO(Dataset):
     # split_type: the split to be loaded (train, val, test)
     # augment_data: if True, the data is augmented with random transformations
 
-    def __init__(self, annotations_file, img_dir, model, preprocess=None, transform=None, target_transform=None, device = 'cuda', sample_size=42226, batch_size=None, split_type='train', augment_data=False):
+    def __init__(self, annotations_file, img_dir, preprocess, device, sample_size, split_type, augment_data=False):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
-        self.target_transform = target_transform
         self.device = device
         self.sample_size = sample_size
         self.img_dir = img_dir
-        self.transform = transform
         self.preprocess = preprocess
-        self.model = model
-        self.batch_size = batch_size
         self.img, self.description = self.get_imgs_texts()
         info(split_type.upper()+": ENCODING"+(" & AUGMENTIG DATA..." if augment_data else "..."))
         self.enc_imgs, self.enc_txts = self.encode_data(augment_data)
