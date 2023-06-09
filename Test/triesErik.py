@@ -229,7 +229,7 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=30720
+    sample_size_train=18000
     sample_size_test=5120
     sample_size_val=256
     augment_data_train=True

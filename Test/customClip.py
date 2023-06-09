@@ -164,7 +164,6 @@ class CustomClip(torch.nn.Module):
           probs = logits_per_text.softmax(dim=1)
           top_prob, top_label = probs.topk(1, dim=-1)
 
-<<<<<<< HEAD
         return bounding_boxes[top_label.item()], top_prob.item()
       
     def forward(self, image, text):
@@ -175,25 +174,7 @@ class CustomClip(torch.nn.Module):
         text = self.model.encode_text(text)
         with autocast(dtype=torch.half):
            text = self.txt_bottleneck(text).to(self.device)
-=======
-        max_sim=0
-        for index, img in enumerate(img_cropped):
-          preprocessed_img = self.preprocess(img).unsqueeze(0).to(self.device)
-          with torch.no_grad():
-            input_clip_img = self.model.encode_image(preprocessed_img).float()
-          dist = cos_sim(input_clip_img, input_clip_txt).item()
-          if dist>max_sim:
-             max_sim=dist
-             max_sim_index = index
-          
-        return bounding_boxes[max_sim_index]
-      
-    def forward(self, image, text):
-        # image = self.encoder(image).to(self.device)
-        # image = self.img_bottleneck(image).to(self.device)
-        image = self.model.encode_image(image).float()
-        text = self.model.encode_text(text).float()
->>>>>>> 8b23d45 (removed momentanery bottleneck)
+
 
         if self.norm:
             image = self.bn1(image).to(self.device)  
