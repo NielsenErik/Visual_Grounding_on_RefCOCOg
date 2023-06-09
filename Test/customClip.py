@@ -68,7 +68,7 @@ class CustomClip(torch.nn.Module):
         self.device = device
         self.model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
         if custom_model_path is not None:
-           self.model = load_model(self.model, custom_model_path)
+          self.model, _, _ = load_model(self.model, custom_model_path)
         self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
         self.in_features = 1024
         self.out_features = 1024

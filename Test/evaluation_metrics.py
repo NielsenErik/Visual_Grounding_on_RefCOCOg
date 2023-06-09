@@ -78,7 +78,7 @@ def eval_step(model, eval_loader, device = get_device()):
     return comulative_recall / samples, cumulative_sim / samples
 
 
-clip_model = CustomClip(device=get_device(), custom_model_path="Personal_Model")
+clip_model = CustomClip(device=get_device(), custom_model_path="Personal_Model/personal_model.pt")
 _, preprocess = clip_model.__get_model__()
 test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=5000)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=False)
