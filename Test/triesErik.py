@@ -159,7 +159,7 @@ def test_step(model, test_loader, cost_function, device=get_device()):
             #images, texts = batch
             images = images.to(device)
             texts = texts.squeeze(1).to(device)
-            debugging(str(texts.shape)+" "+str(images.shape))
+            #debugging(str(texts.shape)+" "+str(images.shape))
             logits_per_image, logits_per_texts = model(images, texts)
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
             img_loss = cost_function(logits_per_image, ground_truth)
@@ -224,13 +224,13 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=10
-    sample_size_test=5
-    sample_size_val=80
+    sample_size_train=30720
+    sample_size_test=5120
+    sample_size_val=256
 
     #TRAINING PARAMS
-    batch_size = 16 #must be 16 due to lenght of clip_targets
-    test_batch_size = 8
+    batch_size = 512 #must be 16 due to lenght of clip_targets
+    test_batch_size = 64
     device = get_device()
     
     #OPTIMIZER & LOSS PARAMS
