@@ -158,8 +158,8 @@ def main():
     augment_data_train=True
 
     #TRAINING PARAMS
-    batch_size = 32 #must be 16 due to lenght of clip_targets
-    test_batch_size = 64
+    batch_size = 16 #must be 16 due to lenght of clip_targets
+    test_batch_size = 16
     epochs = 30
     
     #OPTIMIZER & LOSS PARAMS
