@@ -248,11 +248,7 @@ def main():
 
     e = math.exp(1)
     alpha = 1
-    
-    
     visualization_name='RefCOCOg'
-
-
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
     all_texts = get_all_texts(annotations_file)
@@ -260,14 +256,16 @@ def main():
     clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=False, bias=True)
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
-    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
+    
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=100, sample_size_test=100, sample_size_val=50)
 
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val, augment_data_train=augment_data_train)
-
+    #eval_step(yolo_model, clip_model, clip_processor, val_loader)
+    #desc, tmp = get_texts(val_loader)
     
     tb = TensorBoard("run")
     
     info("BEFORE TRAINING...")
+
     loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
     tb.log_values(epochs+1, loss, accuracy, "Train")
@@ -289,9 +287,7 @@ def main():
         tb.log_values(ep, loss, accuracy, "Train")
         loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
         info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
-        tb.log_values(ep, loss, accuracy, "Validation") 
-        learning_rate, weight_decay, momentum, alpha = update_parameters(learning_rate, weight_decay, momentum, alpha)
-        optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
+        tb.log_values(ep, loss, accuracy, "Validation")
 
     info("AFTER TRAINING...")
     loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
