@@ -232,7 +232,7 @@ def main():
     sample_size_train=30720
     sample_size_test=5120
     sample_size_val=256
-    augment_data_train=False
+    augment_data_train=True
 
     #TRAINING PARAMS
     batch_size = 32 #must be 16 due to lenght of clip_targets
@@ -257,7 +257,7 @@ def main():
     _ , clip_processor = clip_model.__get_model__()
     #clip_model, clip_processor = clip.load('RN50', device, jit=False)
     
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=100, sample_size_test=100, sample_size_val=50)
+    train_loader, test_loader, val_loader = get_data(batch_size, test_batch_size=test_batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val, augment_data_train=augment_data_train)
 
     #eval_step(yolo_model, clip_model, clip_processor, val_loader)
     #desc, tmp = get_texts(val_loader)
