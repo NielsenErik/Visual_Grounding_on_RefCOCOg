@@ -152,10 +152,10 @@ def eval_step(model, eval_loader, cost_function, device=get_device()):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=18000
-    sample_size_test=5120
+    sample_size_train=30000
+    sample_size_test=5000
     sample_size_val=256
-    augment_data_train=True
+    augment_data_train=False
 
     #TRAINING PARAMS
     batch_size = 16 #must be 16 due to lenght of clip_targets
