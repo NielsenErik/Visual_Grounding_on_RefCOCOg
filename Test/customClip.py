@@ -150,6 +150,7 @@ class CustomClip(torch.nn.Module):
         with autocast(dtype=torch.half):
            text = self.txt_bottleneck(text).to(self.device)
 
+
         if self.norm:
             image = self.bn1(image).to(self.device)  
             text = self.bn1(text).to(self.device)      

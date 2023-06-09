@@ -152,10 +152,10 @@ def eval_step(model, test_loader, cost_function, device=get_device()):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=30720
+    sample_size_train=18000
     sample_size_test=5120
     sample_size_val=256
-    augment_data_train=False
+    augment_data_train=True
 
     #TRAINING PARAMS
     batch_size = 32 #must be 16 due to lenght of clip_targets
@@ -177,10 +177,13 @@ def main():
 
     train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val, augment_data_train=augment_data_train)
 
+    #eval_step(yolo_model, clip_model, clip_processor, val_loader)
+    #desc, tmp = get_texts(val_loader)
     
     tb = TensorBoard("run")
     
     info("BEFORE TRAINING...")
+
     loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
     tb.log_values(epochs+1, loss, accuracy, "Train")
