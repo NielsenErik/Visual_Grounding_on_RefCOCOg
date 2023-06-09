@@ -244,7 +244,7 @@ def main():
     weight_decay = 0.000001
     momentum = 0.9
 
-    epochs = 30
+    epochs = 20
 
     e = math.exp(1)
     alpha = 1
@@ -270,13 +270,13 @@ def main():
     info("BEFORE TRAINING...")
     loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
-    tb.log_values(epochs+1, loss, accuracy, recall, "Train")
+    tb.log_values(epochs+1, loss, accuracy, "Train")
     loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
-    tb.log_values(epochs+1, loss, accuracy, recall, "Validation")
+    tb.log_values(epochs+1, loss, accuracy, "Validation")
     loss, accuracy, recall = test_step(clip_model, test_loader, cost_function)
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
-    tb.log_values(epochs+1, loss, accuracy, recall, "Test")
+    tb.log_values(epochs+1, loss, accuracy, "Test")
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)    
 
     info("INIT TRAINING...")
@@ -296,13 +296,13 @@ def main():
     info("AFTER TRAINING...")
     loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
-    tb.log_values(epochs+1, loss, accuracy, recall, "Train")
+    tb.log_values(epochs+1, loss, accuracy, "Train")
     loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
-    tb.log_values(epochs+1, loss, accuracy, recall, "Validation")
+    tb.log_values(epochs+1, loss, accuracy, "Validation")
     loss, accuracy, recall = test_step(clip_model, test_loader, cost_function)
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
-    tb.log_values(epochs+1, loss, accuracy, recall, "Test")
+    tb.log_values(epochs+1, loss, accuracy, "Test")
     tb.close()
 
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
