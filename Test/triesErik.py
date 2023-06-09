@@ -122,7 +122,7 @@ def test_step(model, test_loader, cost_function, device=get_device()):
     return cumulative_loss / samples, cumulative_accuracy / samples
 
 
-def eval_step(model, test_loader, cost_function, device=get_device()):
+def eval_step(model, eval_loader, cost_function, device=get_device()):
     samples = 0.0
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
@@ -130,8 +130,8 @@ def eval_step(model, test_loader, cost_function, device=get_device()):
     model.eval() 
     # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
     with torch.no_grad():
-        # iterate over the test set
-        for (images, texts) in test_loader:
+        # iterate over the set
+        for (images, texts) in eval_loader:
             images = images.to(device)
             texts = texts.squeeze(1).to(device)
             logits_per_image, logits_per_texts = model(images, texts)
@@ -182,14 +182,14 @@ def main():
     
     info("BEFORE TRAINING...")
 
-    loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
-    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    loss, accuracy = test_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
     tb.log_values(epochs+1, loss, accuracy, "Train")
-    loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
-    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    loss, accuracy = test_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
     tb.log_values(epochs+1, loss, accuracy, "Validation")
-    loss, accuracy, recall = test_step(clip_model, test_loader, cost_function)
-    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
+    loss, accuracy = test_step(clip_model, test_loader, cost_function)
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}".format(loss, accuracy))
     tb.log_values(epochs+1, loss, accuracy, "Test")
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay)    
 
@@ -201,20 +201,20 @@ def main():
             save_model(clip_model, ep, optimizer, loss, "Personal_Model")
         info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% ".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Train")
-        loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
+        loss, accuracy = test_step(clip_model, val_loader, cost_function)
         info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Validation") 
         learning_rate, weight_decay, alpha = update_parameters(learning_rate, weight_decay, alpha)
         optimizer = get_optimizer(clip_model, learning_rate, weight_decay)
 
     info("AFTER TRAINING...")
-    loss, accuracy, recall = test_step(clip_model, train_loader, cost_function)
+    loss, accuracy, recall = eval_step(clip_model, train_loader, cost_function)
     info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
     tb.log_values(epochs+1, loss, accuracy, "Train")
-    loss, accuracy, recall = test_step(clip_model, val_loader, cost_function)
+    loss, accuracy, recall = eval_step(clip_model, val_loader, cost_function)
     info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
     tb.log_values(epochs+1, loss, accuracy, "Validation")
-    loss, accuracy, recall = test_step(clip_model, test_loader, cost_function)
+    loss, accuracy, recall = eval_step(clip_model, test_loader, cost_function)
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%}".format(loss, accuracy, recall))
     tb.log_values(epochs+1, loss, accuracy, "Test")
     tb.close()
