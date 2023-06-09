@@ -127,6 +127,7 @@ def eval_step(model, eval_loader, cost_function, device=get_device()):
     cumulative_loss = 0.0
     cumulative_accuracy = 0.0
     comulative_recall = 0.0
+    cumulative_sim = 0.0
     model.eval() 
     # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
     with torch.no_grad():
@@ -145,10 +146,10 @@ def eval_step(model, eval_loader, cost_function, device=get_device()):
             _, predicted = logits_per_image.max(dim=1)
             cumulative_accuracy += predicted.eq(ground_truth).sum().item()
             comulative_recall += recall(predicted, ground_truth, n_labels, device)
-            semantic_similarity(model, images, texts)
-            info(str(semantic_similarity))
+            cos_sim = semantic_similarity(model, images, texts)
+            cumulative_sim += torch.sum(cos_sim).item()
 
-    return cumulative_loss / samples, cumulative_accuracy / samples, comulative_recall / samples
+    return cumulative_loss / samples, cumulative_accuracy / samples, comulative_recall / samples, cumulative_sim / samples
 
 
 def main():
@@ -210,14 +211,14 @@ def main():
         optimizer = get_optimizer(clip_model, learning_rate, weight_decay)
 
     info("AFTER TRAINING...")
-    loss, accuracy, recall = eval_step(clip_model, train_loader, cost_function)
-    info("Train - LOSS: {:.4} ACCURACY: {:2.1%} RECALL: {:2.1%}".format(loss, accuracy, recall))
+    loss, accuracy, recall, similarity = eval_step(clip_model, train_loader, cost_function)
+    info("Train - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(loss, accuracy, recall, similarity))
     tb.log_values(epochs+1, loss, accuracy, "Train")
-    loss, accuracy, recall = eval_step(clip_model, val_loader, cost_function)
-    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%} RECALL: {:2.1%}".format(loss, accuracy, recall))
+    loss, accuracy, recall, similarity = eval_step(clip_model, val_loader, cost_function)
+    info("Validation - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(loss, accuracy, recall, similarity))
     tb.log_values(epochs+1, loss, accuracy, "Validation")
-    loss, accuracy, recall = eval_step(clip_model, test_loader, cost_function)
-    info("Test - LOSS: {:.4} ACCURACY: {:2.1%} RECALL: {:2.1%}".format(loss, accuracy, recall))
+    loss, accuracy, recall, similarity = eval_step(clip_model, test_loader, cost_function)
+    info("Test - LOSS: {:.4} ACCURACY: {:2.1%}% RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(loss, accuracy, recall, similarity))
     tb.log_values(epochs+1, loss, accuracy, "Test")
     tb.close()
 
