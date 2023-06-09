@@ -229,14 +229,13 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=10
-    sample_size_test=5
-    sample_size_val=80
+    sample_size_train=30720
+    sample_size_test=5120
+    sample_size_val=256
 
     #TRAINING PARAMS
-    batch_size = 16 #must be 16 due to lenght of clip_targets
-    test_batch_size = 8
-    device = get_device()
+    batch_size = 512 #must be 16 due to lenght of clip_targets
+    test_batch_size = 64
     
     #OPTIMIZER & LOSS PARAMS
     cost_function = get_cost_function()
