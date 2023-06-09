@@ -1,12 +1,5 @@
-import numpy as np
-import pandas as pd
 import torch
-from PIL import Image
-import cv2
-import torchvision.transforms as T
-from transformers import CLIPProcessor, CLIPModel
 import clip
-import math
 
 #Custom modules
 from cocoLoad import RefCOCO #Importing REfCOCO class from cocoLoad.py

@@ -2,7 +2,6 @@ from customClip import CustomClip
 import torch
 import cv2
 import random
-from pathlib import Path
 from printCalls import info, debugging, error, warning
 from cocoLoad import RefCOCO
 

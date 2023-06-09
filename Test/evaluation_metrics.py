@@ -78,7 +78,7 @@ def eval_step(model, eval_loader, device = get_device()):
     return comulative_recall / samples, cumulative_sim / samples
 
 
-clip_model = CustomClip(device=get_device())
+clip_model = CustomClip(device=get_device(), custom_model_path="Personal_Model")
 _, preprocess = clip_model.__get_model__()
 test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=5000)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=False)
@@ -89,18 +89,18 @@ info("RECALL: {:2.1%} SIMILARITY: {:2.1%}".format(rec, sim))
 
 
 # Evaluate IoU (localization accuracy metric)
-IoU = 0
-for i in range(10):
-    _, img = test_data.__getimg__(random.randint(0, test_data.__len__()))
-    cvimg = cv2.imread(img)
-    cv2.imshow("Input",cvimg)
-    cv2.waitKey(0)
-    info("Insert sentence:")
-    text=input()
-    item, _ = clip_model.__get_boxes__(img, text)
-    if item is not None:
-        cv2.rectangle(cvimg, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 3)
-        cv2.imshow("Output",cvimg)
-        cv2.waitKey(0)
+# IoU = 0
+# for i in range(10):
+#     _, img = test_data.__getimg__(random.randint(0, test_data.__len__()))
+#     cvimg = cv2.imread(img)
+#     cv2.imshow("Input",cvimg)
+#     cv2.waitKey(0)
+#     info("Insert sentence:")
+#     text=input()
+#     item, _ = clip_model.__get_boxes__(img, text)
+#     if item is not None:
+#         cv2.rectangle(cvimg, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 3)
+#         cv2.imshow("Output",cvimg)
+#         cv2.waitKey(0)
 
-info("IoU: {:2.1%}".format(IoU))
+# info("IoU: {:2.1%}".format(IoU))
