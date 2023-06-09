@@ -159,6 +159,7 @@ def test_step(model, test_loader, cost_function, device=get_device()):
             #images, texts = batch
             images = images.to(device)
             texts = texts.squeeze(1).to(device)
+            debugging(str(texts.shape)+" "+str(images.shape))
             logits_per_image, logits_per_texts = model(images, texts)
             ground_truth = torch.arange(len(images),dtype=torch.long,device=device)
             img_loss = cost_function(logits_per_image, ground_truth)
@@ -223,8 +224,8 @@ def update_parameters(learning_rate, weight_decay, momentum, alpha):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=30016
-    sample_size_test=5016
+    sample_size_train=10
+    sample_size_test=5
     sample_size_val=80
 
     #TRAINING PARAMS
@@ -243,7 +244,9 @@ def main():
     e = math.exp(1)
     alpha = 1
     
+    
     visualization_name='RefCOCOg'
+
 
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
@@ -269,11 +272,10 @@ def main():
     loss, accuracy = test_step(clip_model, test_loader, cost_function)
     info("Test - LOSS: {:.4} ACCURACY: {:2.1%}%".format(loss, accuracy))
     tb.log_values(0, loss, accuracy, "Test")
-    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)
+    optimizer = get_optimizer(clip_model, learning_rate, weight_decay, momentum)    
 
     info("INIT TRAINING...")
     for ep in range(1, epochs+1):
-
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
         if ep % 5 == 0:

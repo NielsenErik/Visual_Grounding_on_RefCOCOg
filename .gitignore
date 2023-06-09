@@ -3,5 +3,6 @@ refcocog
 *.csv
 *.pt
 *.pyc
-Personal_Model/*.pt
 Test/__pycache__
+Personal_Model/*
+runs/RefCOCOg/*
