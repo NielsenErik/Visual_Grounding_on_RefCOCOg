@@ -30,7 +30,7 @@ def final_program(clip_model=None):
         textual_desc = random.choice(test_data.__gettext__(index))
 
         img = cv2.imread(image)
-        item, prob = clip_model.__get_boxes_v2__(image, textual_desc)
+        item, prob = clip_model.__get_boxes__(image, textual_desc)
         if item is not None:
             cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 3)
             info("{:05d}: {} --> {}\n\033[92m{:2.1%}\033[0m".format(index, image, textual_desc, prob))

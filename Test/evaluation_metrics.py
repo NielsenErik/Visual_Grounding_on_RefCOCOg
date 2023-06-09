@@ -29,16 +29,13 @@ def intersection_over_union(preds, target):
     value = box_iou(preds, target)
     return value.item()
 
-def semantic_similarity(clip_model, clip_preprocess, img, text, device = 'cuda'):
+def semantic_similarity(clip_model, img, text, device = 'cuda'):
     # Semantic similarity is a metric defined over a set of documents or terms,
     # where the idea of distance between them is based on the likeness of their meaning or semantic content
     # Parameters:
     # clip_model (torch.nn.Module): CLIP model
     # img (string): Image
     # text (string): Description
-    text = clip.tokenize(text).to(device)
-    img = clip_preprocess(Image.open(img))
-    clip_model.eval()
     with torch.no_grad():
         enc_text = clip_model.encode_text(text).float()
         enc_img = clip_model.encode_image(img).float()

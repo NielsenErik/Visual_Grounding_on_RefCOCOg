@@ -109,32 +109,7 @@ class CustomClip(torch.nn.Module):
     def __get_model__(self):
         return self.model, self.preprocess    
     
-    def __get_boxes_v1__(self, input_img, input_text):
-        detections = self.detector(input_img).pandas().xyxy[0]
-
-        max_sim=0
-        text_t = clip.tokenize(input_text).to(self.device)
-        with torch.no_grad():
-          enc_text = self.model.encode_text(text_t).float()
-        cos_sim = nn.CosineSimilarity()
-        for item in detections["name"]:
-          cl_t = clip.tokenize(item).to(self.device)
-          with torch.no_grad():
-            enc_cl = self.model.encode_text(cl_t).float()
-          dist = cos_sim(enc_cl, enc_text).item()
-          debugging("{} <-> {}: {:2.1%}".format(input_text, item, dist))
-          if dist > max_sim:
-             max_sim = dist
-             max_sim_cl = item
-
-        boxes = []
-        for _, item in detections.iterrows():
-           if item["name"] == max_sim_cl:
-              boxes.append({"xmin": int(item["xmin"]),"xmax": int(item["xmax"]),"ymin": int(item["ymin"]),"ymax": int(item["ymax"]),"confidence_class": item["confidence"], "confidence_text":max_sim})
-
-        return boxes
-    
-    def __get_boxes_v2__(self, input_img, input_text):
+    def __get_boxes__(self, input_img, input_text):
         self.model.eval()
         detections = self.detector(input_img).pandas().xyxy[0]
         image = Image.open(input_img)
