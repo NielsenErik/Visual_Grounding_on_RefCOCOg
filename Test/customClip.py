@@ -95,9 +95,11 @@ class CustomClip(torch.nn.Module):
     def set_txt_bottleneck(self):
        layer = [
                     torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
-                    torch.nn.ReLU(inplace=True),
+                    torch.nn.Sigmoid(),
+                    #torch.nn.ReLU(inplace=True),
                     torch.nn.Linear(self.in_features // 2, self.in_features // 2, bias=self.bias),
-                    torch.nn.ReLU(inplace=True),
+                    torch.nn.Sigmoid(),
+                    #torch.nn.ReLU(inplace=True),
                     torch.nn.Linear(self.in_features // 2, self.out_features, bias=self.bias),
        ]
        bottleneck = torch.nn.Sequential(*layer).to(self.device)
