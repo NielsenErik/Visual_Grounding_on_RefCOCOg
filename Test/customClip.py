@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 from torch import nn
-import torch.nn.functional as F
 from torch.cuda.amp import autocast
 import clip
 from PIL import Image
@@ -64,12 +63,11 @@ class BatchNorm1d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
-    def __init__(self, device, custom_model_path=None, batch_size=128, norm=True, bias=True):
+    def __init__(self, device, batch_size=128, norm=True, bias=True):
+
         super().__init__()
         self.device = device
         self.model, self.preprocess = clip.load('RN50', device=self.device, jit=False)
-        if custom_model_path is not None:
-           self.model = load_model(self.model, custom_model_path)
         self.detector = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True, _verbose=False)
         self.in_features = 1024
         self.out_features = 1024
