@@ -1,6 +1,5 @@
 import torch
-import random
-import cv2
+import math
 from torchmetrics.classification import MulticlassRecall
 from torchvision.ops import box_iou
 from printCalls import info
@@ -25,7 +24,7 @@ def recall(preds, target, num_labels, device = get_device()):
     # preds (torch.Tensor): Predicted values
     # target (torch.Tensor): Ground truth values
     # num_labels (int): Number of labels
-    recall = MulticlassRecall(num_classes=num_labels).to(device)
+    recall = MulticlassRecall(num_classes=num_labels, average=None).to(device)
     multilabel_recall = recall(preds, target)
     return multilabel_recall
 
@@ -40,29 +39,25 @@ def intersection_over_union(preds, target):
     value = box_iou(preds, target)
     return value.item()
 
-def cosine_similarity(custom_model, imgs, texts):
+def cosine_similarity(logits_img, logits_txt):
     # Semantic similarity is a metric defined over a set of documents or terms,
     # where the idea of distance between them is based on the likeness of their meaning or semantic content
     # Parameters:
     # custom_model (torch.nn.Module): custom model
     # img (string): Image
     # text (string): Description
-    clip_model, _ = custom_model.__get_model__()
-    clip_model.float()
-    with torch.no_grad():
-        enc_texts = clip_model.encode_text(texts).float()
-        enc_imgs = clip_model.encode_image(imgs).float()
     cos_sim = torch.nn.CosineSimilarity()
-    similarity = cos_sim(enc_imgs, enc_texts)
+    similarity = cos_sim(logits_img, logits_txt)
     return similarity
 
 def eval_step(model, eval_loader, device = get_device()):
     samples = 0.0
     cumulative_accuracy = 0.0
-    comulative_recall = 0.0
+    cumulative_recall = 0.0
     cumulative_sim = 0.0
     cumulative_accuracy = 0.0
     model.eval() 
+    model.float()
     # disable gradient computation (we are only testing, we do not want our model to be modified in this step!)
     with torch.no_grad():
         # iterate over the set
@@ -74,24 +69,24 @@ def eval_step(model, eval_loader, device = get_device()):
             samples += images.shape[0]  
             n_labels = logits_per_texts.shape[1]
             _, predicted = logits_per_image.max(dim=1)
-            cumulative_recall += recall(predicted, ground_truth, n_labels, device)
+            cumulative_recall += torch.sum(recall(predicted, ground_truth, n_labels, device)).item()
             cumulative_accuracy += predicted.eq(ground_truth).sum().item()
-            cos_sim = cosine_similarity(model, images, texts)
-            cumulative_sim += torch.sum(cos_sim).item()
+            cumulative_sim += torch.sum(cosine_similarity(logits_per_image, logits_per_texts)).item()
 
     return cumulative_accuracy / samples, cumulative_recall / samples, cumulative_sim / samples
 
 
 clip_model_ = CustomClip(device=get_device())
 _, preprocess = clip_model_.__get_model__()
-clip_model, epoch, loss = load_model(clip_model_, "Personal_Model/Model2.pt") #QUI METTERE IL MODELLO DA TESTARE
-test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=4000)
+clip_model, epoch, loss = load_model(clip_model_, "Personal_Model/personal_model.pt")
+test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=100)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=False)
 
 # Evaluate recall (grounding accuracy metric) and cosine similarity (semantic similarity metric)
 info("EVALUATING...")
 acc, rec, sim = eval_step(clip_model, test_loader)
-info("ACCURACY: {:2.1%} RECALL: {:2.1%} SIMILARITY: {:.4}".format(acc, rec, sim))
+angle = math.degrees(math.acos(sim))
+info("ACCURACY: {:2.1%} RECALL: {:2.1%} SIMILARITY: {:.4} -> {:.1f}°".format(acc, rec, sim, angle))
 
 
 # Evaluate IoU (localization accuracy metric)
