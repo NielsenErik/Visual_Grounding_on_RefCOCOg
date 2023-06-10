@@ -136,6 +136,7 @@ def main():
     annotations_file = 'refcocog/annotations/refs(umd).p'
     root_imgs = 'refcocog/images'
     clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True, bias=False)
+    clip_model.float()
     _ , clip_processor = clip_model.__get_model__()
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay)
 
