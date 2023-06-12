@@ -44,7 +44,7 @@ def update_parameters(learning_rate, weight_decay, alpha):
     return learning_rate, weight_decay, alpha
 
 
-def get_data(batch_size, annotations_file, img_root, model, test_batch_size = 16, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573, augment_data_train=True):
+def get_data(batch_size, annotations_file, img_root, test_batch_size = 16, preprocess = None, device = get_device(), sample_size_train = 42226, sample_size_test = 5023, sample_size_val = 2573, augment_data_train=True):
     sample_size_train = sample_size_train if sample_size_train <= 42226 else 42226
     sample_size_test = sample_size_test if sample_size_test <= 5023 else 5023
     sample_size_val = sample_size_val if sample_size_val <= 2573 else 2573

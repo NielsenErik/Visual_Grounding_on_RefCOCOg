@@ -19,9 +19,9 @@ def get_device():
 
 def final_program(clip_model=None):
     if clip_model is None:
-        clip_model = CustomClip(device=get_device())
+        clip_model = CustomClip(device=get_device(), norm=False)
     _, clip_processor = clip_model.__get_model__()
-    sample_size = 100#len([p for p in Path("refcocog/images").glob('*')])
+    sample_size = 100
     info("Total size: "+str(sample_size))
     test_data = RefCOCO(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog/images", preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size)
 
@@ -33,7 +33,6 @@ def final_program(clip_model=None):
 
         img = cv2.imread(image)
         item, prob = clip_model.__get_boxes__(image, textual_desc)
-        info("Image: "+image + ", textual description: "+textual_desc+ ", probability: "+str(prob))
         if item is not None:
             
             cv2.rectangle(img, (item["xmin"], item["ymin"]), (item["xmax"], item["ymax"]), (0,127,0), 3)
@@ -45,7 +44,7 @@ def final_program(clip_model=None):
             cv2.destroyAllWindows()
         
 if __name__ == "__main__":
-    clip_model = CustomClip(device=get_device())
-    clip_model, epoch, loss = load_model(clip_model, "Personal_Model/Model2.pt")
+    clip_model = CustomClip(device=get_device(), norm=False)
+    clip_model, epoch, loss = load_model(clip_model, "Personal_Model/personal_model.pt")
     final_program(clip_model)
     cv2.destroyAllWindows()

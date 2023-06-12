@@ -80,11 +80,11 @@ clip_model_ = CustomClip(device=get_device())
 _, preprocess = clip_model_.__get_model__()
 clip_model, epoch, loss = load_model(clip_model_, "Personal_Model/personal_model.pt")
 test_data = RefCOCO(annotations_file = 'refcocog/annotations/refs(umd).p', img_dir='refcocog/images', preprocess = preprocess, split_type='test', device=get_device(), sample_size=100)
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=False)
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=16, shuffle=True)
 
 # Evaluate recall (grounding accuracy metric) and cosine similarity (semantic similarity metric)
 info("EVALUATING...")
-acc, rec, sim = eval_step(clip_model, test_loader)
+acc, rec, sim = eval_step(clip_model_, test_loader)
 angle = math.degrees(math.acos(sim))
 info("ACCURACY: {:2.1%} RECALL: {:2.1%} SIMILARITY: {:.4} -> {:.1f}°".format(acc, rec, sim, angle))
 

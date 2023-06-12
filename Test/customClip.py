@@ -68,7 +68,11 @@ class BatchNorm1d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
-  # 
+    # This class allows us to build an ad-hoc class based on CLIP, so we can edit the forward step
+    # by introducing some techniques as batch normalization, bottleneck, ...
+    # The class is based on the CLIP class, so we can use the same methods and attributes
+    # Moreover we add a function to predict bounding boxes for the final goal
+
     def __init__(self, device, batch_size=128, norm=True, bias=True):
 
         super().__init__()
@@ -88,6 +92,7 @@ class CustomClip(torch.nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
     
     def set_img_bottleneck(self):
+        # Implement a bottleneck for images
         layer = [
                     torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
                     torch.nn.ReLU(inplace=True),
@@ -99,6 +104,7 @@ class CustomClip(torch.nn.Module):
         return bottleneck
     
     def set_txt_bottleneck(self):
+       # Implement a bottleneck for texts
        layer = [
                     torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
                     torch.nn.Sigmoid(),
@@ -110,10 +116,15 @@ class CustomClip(torch.nn.Module):
        return bottleneck
     
     def __get_model__(self):
+        # This function returns the model and the preprocess function
         return self.model, self.preprocess    
     
     def __get_boxes__(self, input_img, input_text):
-        self.model.eval()
+        # This function returns the bounding box for the input image that fits more with the textual descritpion
+
+        self.eval()
+
+        # First we extract the bounding boxes from the image
         detections = self.detector(input_img).pandas().xyxy[0]
         image = Image.open(input_img)
         img_cropped = []
@@ -127,9 +138,11 @@ class CustomClip(torch.nn.Module):
           img_cropped.append(cropped)
           bounding_boxes.append({"xmin": int(item["xmin"]), "ymin": int(item["ymin"]), "xmax": int(item["xmax"]), "ymax": int(item["ymax"])})
 
+        # If there are no bounding boxes, we return None
         if(len(img_cropped)==0):
            return None
 
+        # Then we extract the features from the image and the text
         with torch.no_grad():
           tokenized_text = clip.tokenize([input_text]).squeeze(1).to(self.device)
 
@@ -137,15 +150,19 @@ class CustomClip(torch.nn.Module):
           for index, img in enumerate(img_cropped):
             preprocessed_imgs.append(self.preprocess(img).to(self.device))
           preprocessed_imgs = torch.stack(preprocessed_imgs)
-          self.model.float()
-          _, logits_per_text = self.model(preprocessed_imgs, tokenized_text)
+
+          # Pass text and cropped images to the model and return that one with highest score
+          self.float()
+          _, logits_per_text = self(preprocessed_imgs, tokenized_text)
           probs = logits_per_text.softmax(dim=1)
           top_prob, top_label = probs.topk(1, dim=-1)
 
         return bounding_boxes[top_label.item()], top_prob.item()
       
     def forward(self, image, text):
-        #image = self.encoder(image).to(self.device)       
+        # This function is the forward step of the model
+
+        # First we extract the features from the image and the text and pass them into the bottleneck    
         image = self.model.encode_image(image)
         with autocast(dtype=torch.half):
            image = self.img_bottleneck(image).to(self.device)
@@ -153,10 +170,10 @@ class CustomClip(torch.nn.Module):
         with autocast(dtype=torch.half):
            text = self.txt_bottleneck(text).to(self.device)
 
-
+        # Then we normalize the features and compute the logits
         if self.norm:
             image = self.bn1(image).to(self.device)  
-            text = self.bn1(text).to(self.device)      
+            text = self.bn1(text).to(self.device)    
         
         image = image / image.norm(dim=-1, keepdim=True).float()
         text = text / text.norm(dim=-1, keepdim=True).float()
