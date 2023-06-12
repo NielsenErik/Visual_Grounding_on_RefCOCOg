@@ -44,6 +44,8 @@ class BatchNorm1d(torch.nn.Module):
     if self.training and self.track_running_stats:
       # no computational graph is necessary to be built for this computation
       with torch.no_grad():
+        self.running_mean = self.running_mean.to(self.device)
+        self.running_std = self.running_std.to(self.device)
         self.running_mean = (self.momentum * self.running_mean + (1 - self.momentum) * mean)
         self.running_std = (self.momentum * self.running_std + (1 - self.momentum) * std)
     
@@ -53,6 +55,9 @@ class BatchNorm1d(torch.nn.Module):
       std = self.running_std
     
     # normalize the input activations
+    x = x.to(self.device)
+    mean = mean.to(self.device)
+    std = std.to(self.device)
     x = (x - mean) / std
     
     # scale and shift the normalized activations
@@ -63,6 +68,7 @@ class BatchNorm1d(torch.nn.Module):
 
 
 class CustomClip(torch.nn.Module):
+  # 
     def __init__(self, device, batch_size=128, norm=True, bias=True):
 
         super().__init__()
@@ -73,7 +79,7 @@ class CustomClip(torch.nn.Module):
         self.out_features = 1024
         self.norm = norm
         if self.norm:
-          self.bn1 = BatchNorm1d(self.in_features, track_running_stats=False, affine=False, momentum=0.9)
+          self.bn1 = BatchNorm1d(self.in_features, track_running_stats=False, affine=False, momentum=0.5, device=self.device)
         self.bias = False
         self.norm = norm
         self.batch_size = batch_size
