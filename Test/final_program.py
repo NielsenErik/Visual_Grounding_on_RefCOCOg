@@ -1,12 +1,12 @@
-from customClip import CustomClip
-import torch
-import cv2
 import random
-from printCalls import info, debugging, error, warning
+import warnings
+
+import cv2
+import torch
 from cocoLoad import RefCOCO
-from model_utilis import TensorBoard, save_model, load_model, putTextBg
-
-
+from customClip import CustomClip
+from model_utilis import TensorBoard, load_model, putTextBg, save_model
+from printCalls import debugging, error, info, warning
 
 get_device_first_call=True
 def get_device():
@@ -18,6 +18,7 @@ def get_device():
     return device
 
 def final_program(clip_model=None):
+    warnings.filterwarnings("ignore")
     if clip_model is None:
         clip_model = CustomClip(device=get_device(), norm=False)
     _, clip_processor = clip_model.__get_model__()
@@ -46,5 +47,6 @@ def final_program(clip_model=None):
 if __name__ == "__main__":
     clip_model = CustomClip(device=get_device(), norm=False)
     clip_model, epoch, loss = load_model(clip_model, "Personal_Model/personal_model.pt")
+
     final_program(clip_model)
     cv2.destroyAllWindows()
