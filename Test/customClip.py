@@ -108,8 +108,6 @@ class CustomClip(torch.nn.Module):
        layer = [
                     torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
                     torch.nn.Sigmoid(),
-                    torch.nn.Linear(self.in_features // 2, self.in_features // 2, bias=self.bias),
-                    torch.nn.Sigmoid(),
                     torch.nn.Linear(self.in_features // 2, self.out_features, bias=self.bias),
        ]
        bottleneck = torch.nn.Sequential(*layer).to(self.device)

@@ -116,9 +116,9 @@ def test_step(model, test_loader, cost_function, device=get_device()):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=200
-    sample_size_test=50
-    sample_size_val=25
+    sample_size_train=20000
+    sample_size_test=5023
+    sample_size_val=2500
     augment_data_train=True
 
     #TRAINING PARAMS
@@ -140,7 +140,7 @@ def main():
     _ , clip_processor = clip_model.__get_model__()
     optimizer = get_optimizer(clip_model, learning_rate, weight_decay)
 
-    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, model=clip_model, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val, augment_data_train=augment_data_train)
+    train_loader, test_loader, val_loader = get_data(batch_size, annotations_file=annotations_file, img_root=root_imgs, test_batch_size = test_batch_size, preprocess=clip_processor, sample_size_train=sample_size_train, sample_size_test=sample_size_test, sample_size_val=sample_size_val, augment_data_train=augment_data_train)
 
     
     tb = TensorBoard("run")
