@@ -46,7 +46,7 @@ def final_program(clip_model=None):
         
 if __name__ == "__main__":
     clip_model = CustomClip(device=get_device(), norm=False)
-    clip_model, epoch, loss = load_model(clip_model, "Personal_Model/personal_model.pt")
+    clip_model, epoch, loss = load_model(clip_model, "Personal_Model/FINAL_MODEL_personal_model_Adadelta_60K-16-aug-sigmoid.pt")
 
     final_program(clip_model)
     cv2.destroyAllWindows()

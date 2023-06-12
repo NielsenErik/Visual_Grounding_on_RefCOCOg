@@ -108,6 +108,8 @@ class CustomClip(torch.nn.Module):
        layer = [
                     torch.nn.Linear(self.in_features, self.in_features // 2, bias=self.bias),
                     torch.nn.Sigmoid(),
+                    torch.nn.Linear(self.in_features // 2, self.in_features // 2, bias=self.bias),
+                    torch.nn.Sigmoid(),
                     torch.nn.Linear(self.in_features // 2, self.out_features, bias=self.bias),
        ]
        bottleneck = torch.nn.Sequential(*layer).to(self.device)
@@ -154,7 +156,6 @@ class CustomClip(torch.nn.Module):
           _, logits_per_text = self(preprocessed_imgs, tokenized_text)
           probs = logits_per_text.softmax(dim=1)
           top_prob, top_label = probs.topk(1, dim=-1)
-
         return bounding_boxes[top_label.item()], top_prob.item()
       
     def forward(self, image, text):
