@@ -48,9 +48,9 @@ def get_data(batch_size, annotations_file, img_root, test_batch_size = 16, prepr
     sample_size_train = sample_size_train if sample_size_train <= 42226 else 42226
     sample_size_test = sample_size_test if sample_size_test <= 5023 else 5023
     sample_size_val = sample_size_val if sample_size_val <= 2573 else 2573
-    training_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='train', device=device, sample_size=sample_size_train, augment_data=augment_data_train)
-    test_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='test', device=device, sample_size=sample_size_test)
-    eval_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='val', device=device, sample_size=sample_size_val)
+    training_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='train', device=device, sample_size=sample_size_train, augment_data=augment_data_train, with_boxes=True)
+    test_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='test', device=device, sample_size=sample_size_test, with_boxes=True)
+    eval_data = RefCOCO(annotations_file=annotations_file, img_dir=img_root, preprocess=preprocess, split_type='val', device=device, sample_size=sample_size_val, with_boxes=True)
 
     num_training_samples = len(training_data)
     info("Number of training samples:" + str(num_training_samples))
@@ -133,7 +133,7 @@ def main():
     alpha = 1
 
 
-    annotations_file = 'refcocog/annotations/refs(umd).p'
+    annotations_file = 'refcocog/annotations/images_with_boxes.p'
     root_imgs = 'refcocog/images'
     clip_model = CustomClip(device=get_device(), batch_size=batch_size, norm=True, bias=False)
     clip_model.float()
