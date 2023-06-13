@@ -116,9 +116,9 @@ def test_step(model, test_loader, cost_function, device=get_device()):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=20000
-    sample_size_test=5023
-    sample_size_val=2500
+    sample_size_train=1000
+    sample_size_test=100
+    sample_size_val=20
     augment_data_train=True
 
     #TRAINING PARAMS

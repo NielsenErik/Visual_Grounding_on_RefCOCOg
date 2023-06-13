@@ -112,7 +112,7 @@ class RefCOCO(Dataset):
         for _, el in self.img_texts.iterrows():
             images.append(self.img_dir+"/"+el["file_name"][0:27]+".jpg")
             if with_boxes:
-                self.boxes.append({"xmin":el["xmin"], "ymin":el["ymin"], "xmax":el["xmax"], "ymax":el["ymax"]})
+                self.boxes.append({"xmin":int(el["xmin"]), "ymin":int(el["ymin"]), "xmax":int(el["xmax"]), "ymax":int(el["ymax"])})
             sentences=[]
             for sent in el["sentences"]:
                 sentences.append(sent["raw"])
