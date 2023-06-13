@@ -1,4 +1,5 @@
 import pandas as pd
+import math
 from torch.utils.data import Dataset
 from pathlib import Path
 from printCalls import info
@@ -112,7 +113,10 @@ class RefCOCO(Dataset):
         for _, el in self.img_texts.iterrows():
             images.append(self.img_dir+"/"+el["file_name"][0:27]+".jpg")
             if with_boxes:
-                self.boxes.append({"xmin":int(el["xmin"]), "ymin":int(el["ymin"]), "xmax":int(el["xmax"]), "ymax":int(el["ymax"])})
+                if math.isnan(el["xmin"]) or math.isnan(el["ymin"]) or math.isnan(el["xmax"]) or math.isnan(el["ymax"]):
+                    self.boxes.append({"valid": False})
+                else:
+                    self.boxes.append({"valid": True, "xmin":int(el["xmin"]), "ymin":int(el["ymin"]), "xmax":int(el["xmax"]), "ymax":int(el["ymax"])})
             sentences=[]
             for sent in el["sentences"]:
                 sentences.append(sent["raw"])
@@ -132,7 +136,7 @@ class RefCOCO(Dataset):
         enc_imgs=[]
         for i, img in enumerate(self.img):
             tmp = Image.open(img)
-            if with_boxes:
+            if with_boxes and self.boxes[i]["valid"]:
                 tmp = tmp.crop((self.boxes[i]["xmin"], self.boxes[i]["ymin"], self.boxes[i]["xmax"], self.boxes[i]["ymax"]))
             enc_imgs.append(self.preprocess(tmp))
             if augment_data:
