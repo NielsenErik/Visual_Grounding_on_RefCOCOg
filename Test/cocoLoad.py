@@ -87,7 +87,7 @@ class RefCOCO(Dataset):
     # split_type: the split to be loaded (train, val, test)
     # augment_data: if True, the data is augmented with random transformations
 
-    def __init__(self, annotations_file, img_dir, preprocess, device, sample_size, split_type, augment_data=False):
+    def __init__(self, annotations_file, img_dir, preprocess, device, sample_size, split_type, augment_data=False, with_boxes=False):
         x = pd.read_pickle(annotations_file)
         self.img_texts = pd.DataFrame(x)
         self.img_texts = self.img_texts.loc[self.img_texts['split'] == split_type]
@@ -95,21 +95,24 @@ class RefCOCO(Dataset):
         self.sample_size = sample_size
         self.img_dir = img_dir
         self.preprocess = preprocess
-        self.img, self.description = self.get_imgs_texts()
+        self.img, self.description = self.get_imgs_texts(with_boxes)
         info(split_type.upper()+": ENCODING"+(" & AUGMENTIG DATA..." if augment_data else "..."))
-        self.enc_imgs, self.enc_txts = self.encode_data(augment_data)
+        self.enc_imgs, self.enc_txts = self.encode_data(augment_data, with_boxes)
 
     def __len__(self):
         return len(self.enc_imgs)
 
-    def get_imgs_texts(self):
+    def get_imgs_texts(self, with_boxes):
         # This function is used to get the images and the labels (descriptions) from the dataset
         # It returns a list of images and a list of list of sentences ordered (idx image = idx text)
         images=[]
         texts=[]
+        self.boxes=[]
         index=0
         for _, el in self.img_texts.iterrows():
             images.append(self.img_dir+"/"+el["file_name"][0:27]+".jpg")
+            if with_boxes:
+                self.boxes.append({"xmin":el["xmin"], "ymin":el["ymin"], "xmax":el["xmax"], "ymax":el["ymax"]})
             sentences=[]
             for sent in el["sentences"]:
                 sentences.append(sent["raw"])
@@ -119,7 +122,7 @@ class RefCOCO(Dataset):
                 break
         return images, texts
     
-    def encode_data(self, augment_data):
+    def encode_data(self, augment_data, with_boxes):
         # This function is used to encode data. It executes:
         # - Tokenization for text
         # - Preprocessing for images
@@ -127,11 +130,13 @@ class RefCOCO(Dataset):
         # the required parameter is:
         # augment_data: boolean that enable data augmentation
         enc_imgs=[]
-        for img in self.img:
-            enc_imgs.append(self.preprocess(Image.open(img)))
+        for i, img in enumerate(self.img):
+            tmp = Image.open(img)
+            if with_boxes:
+                tmp = tmp.crop((self.boxes[i]["xmin"], self.boxes[i]["ymin"], self.boxes[i]["xmax"], self.boxes[i]["ymax"]))
+            enc_imgs.append(self.preprocess(tmp))
             if augment_data:
-                tmp = self.preprocess(Image.open(img))
-                enc_imgs.append(DataAugmentation.random_augmentation(tmp))
+                enc_imgs.append(DataAugmentation.random_augmentation(self.preprocess(tmp)))
 
         enc_txts=[]
         for txt in self.description:
