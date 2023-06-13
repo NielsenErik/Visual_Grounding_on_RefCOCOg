@@ -116,15 +116,15 @@ def test_step(model, test_loader, cost_function, device=get_device()):
 def main():
 
     #DATASET PARAMS
-    sample_size_train=1000
-    sample_size_test=100
-    sample_size_val=20
+    sample_size_train=30000
+    sample_size_test=5000
+    sample_size_val=256
     augment_data_train=True
 
     #TRAINING PARAMS
     batch_size = 16 #must be 16 due to lenght of clip_targets
     test_batch_size = 16
-    epochs = 30
+    epochs = 20
     
     #OPTIMIZER & LOSS PARAMS
     cost_function = get_cost_function()
@@ -161,8 +161,7 @@ def main():
     for ep in range(1, epochs+1):
         info("EPOCH "+str(ep)+":")
         loss, accuracy = training_step(clip_model, train_loader, optimizer, cost_function)
-        if ep % 5 == 0:
-            save_model(clip_model, ep, optimizer, loss, "Personal_Model")
+        save_model(clip_model, ep, optimizer, loss, "Personal_Model")
         info("Train - LOSS: {:.4} ACCURACY: {:2.1%} ".format(loss, accuracy))
         tb.log_values(ep, loss, accuracy, "Train")
         loss, accuracy = test_step(clip_model, val_loader, cost_function)
