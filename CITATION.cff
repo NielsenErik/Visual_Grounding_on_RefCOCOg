@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Nielsen
+    given-names: Erik
+  - family-names: Righele
+    given-names: Manuel
+    
+title: "Visual Grounding on RefCOCOg dataset"
+version: 1.0.0
+date-released: 2023-06-13
+url: https://github.com/NielsenErik/Visual_Grounding_on_RefCOCOg
