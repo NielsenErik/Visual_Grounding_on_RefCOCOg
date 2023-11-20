@@ -185,4 +185,5 @@ def main():
     save_model(clip_model, epochs, optimizer, loss, "Personal_Model")
 
 ##########################################################################################
-main()
+if __name__ == "__main__":
+    main()
