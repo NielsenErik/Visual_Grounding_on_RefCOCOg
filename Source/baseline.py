@@ -211,4 +211,6 @@ def main(num_samples = 100):
     info("Starting evaluation")
     eval_list = eval_step(yolo_model, clip_model, clip_preprocess, test_data, device, show_img=True)
     print_eval(eval_list, device)
-main()
+    
+if __name__ == "__main__":
+    main()
