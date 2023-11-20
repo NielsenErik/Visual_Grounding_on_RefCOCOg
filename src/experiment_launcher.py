@@ -22,7 +22,7 @@ def final_program(clip_model=None):
     if clip_model is None:
         clip_model = CustomClip(device=get_device(), norm=False)
     _, clip_processor = clip_model.__get_model__()
-    sample_size = 100
+    sample_size = 1000
     info("Total size: "+str(sample_size))
     test_data = RefCOCO(annotations_file = "refcocog/annotations/refs(umd).p", img_dir="refcocog/images", preprocess=clip_processor, split_type='test', device=get_device(), sample_size=sample_size)
 
